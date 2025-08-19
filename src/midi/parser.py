@@ -1,31 +1,22 @@
-from dataclasses import dataclass
 from typing import List, Dict
 import mido
+from .models import Note
 
-@dataclass
-class Note:
-    channel: int
-    pitch: int
-    velocity_on: int
-    velocity_off: int
-    start_tick: int
-    end_tick: int
-    start_sec: float
-    end_sec: float
-
-    def __str__(self):
-        return (f"Note(channel={self.channel}, pitch={self.pitch}, "
-                f"velocity_on={self.velocity_on}, velocity_off={self.velocity_off}, "
-                f"start_tick={self.start_tick}, end_tick={self.end_tick}, "
-                f"start_sec={self.start_sec:.2f}, end_sec={self.end_sec:.2f})")
 
 def parse_midi(filename: str) -> Dict[int, List[Note]]:
+    """Parse a MIDI file and extract notes by channel.
+    
+    Args:
+        filename: Path to the MIDI file
+        
+    Returns:
+        Dictionary mapping channel numbers to lists of Note objects
+    """
     mid = mido.MidiFile(filename)
 
     ticks_per_beat = mid.ticks_per_beat
     tempo = 500000
     tempo_changes = [(0, tempo)]
-
 
     active_notes = {}
     notes_by_channel: Dict[int, List[Note]] = {ch: [] for ch in range(16)}
@@ -44,7 +35,7 @@ def parse_midi(filename: str) -> Dict[int, List[Note]]:
             key = (msg.channel, msg.note)
             if key in active_notes:
                 start_tick, vel_on = active_notes.pop(key)
-                n = Note(
+                note = Note(
                     channel=msg.channel,
                     pitch=msg.note,
                     velocity_on=vel_on,
@@ -54,17 +45,6 @@ def parse_midi(filename: str) -> Dict[int, List[Note]]:
                     start_sec=mido.tick2second(start_tick, ticks_per_beat, tempo),
                     end_sec=mido.tick2second(abs_tick, ticks_per_beat, tempo),
                 )
-                notes_by_channel[msg.channel].append(n)
+                notes_by_channel[msg.channel].append(note)
 
     return notes_by_channel
-
-
-
-notes = parse_midi("bad apple.mid")
-
-for channel, notes_list in notes.items():
-    print(f"Channel {channel}:")
-    for note in notes_list:
-        print(note)
-    print()
-
