@@ -1,5 +1,7 @@
 import pygame
 import sys
+import random
+from .shape import Point, Square
 
 class AudioVisualizer:
     # Singleton: ensure only one instance of AudioVisualizer exists
@@ -31,19 +33,26 @@ class AudioVisualizer:
         # Update state
         self.running = True
         self.initialized = True
-    
-    def draw_triangle(self):
-        center_x = self.width // 2
-        center_y = self.height // 2
-        triangle_size = 50
-
-        points = [
-            (center_x, center_y - triangle_size),  # Top vertex
-            (center_x - triangle_size, center_y + triangle_size),  # Bottom left
-            (center_x + triangle_size, center_y + triangle_size)   # Bottom right
-        ]
         
-        pygame.draw.polygon(self.screen, (255, 255, 255), points)
+        # Create squares for rotation demo
+        self.square1 = Square(Point(self.width // 2, self.height // 2), 80, (255, 255, 255))  # White square rotating around its center
+        self.square2 = Square(Point(self.width // 2 - 100, self.height // 2), 60, (255, 100, 100))  # Red square rotating around offset point
+    
+    def draw_squares(self):
+        # Square 1: Rotate around its own center (white) - no origin specified = uses center
+        self.square1.rotate(self.square1.current_rotation + 0.02)
+        
+        # Square 2: Grow by random amount and rotate around offset point (red)
+        growth = random.uniform(0.1, 2.0)  # Random growth between 0.1 and 2.0 pixels
+        new_size = self.square2.size + growth
+        self.square2.set_size(new_size)
+        
+        offset_point = Point(self.square2.center.x + 100, self.square2.center.y)
+        self.square2.rotate(self.square2.current_rotation + 0.03, offset_point)
+        
+        # Draw both squares using their draw method
+        self.square1.draw(self.screen)
+        self.square2.draw(self.screen)
     
     def run(self):
         # Main loop
@@ -55,8 +64,8 @@ class AudioVisualizer:
             
             # Clear screen with black background
             self.screen.fill((0, 0, 0))
-            # Draw the triangle shape
-            self.draw_triangle()
+            # Draw the rotating squares
+            self.draw_squares()
 
             # Update the display
             pygame.display.flip()
