@@ -1,5 +1,6 @@
 import math
 import pygame
+import copy
 
 class Point:
     def __init__(self, x: float, y: float):
@@ -100,15 +101,46 @@ class Square(Shape):
             Triangle(top_right, top_left, bot_right)
         ]
         
-        # Store original positions for rotation reset
-        self.original_triangles = [
-            Triangle(Point(top_left.x, top_left.y), Point(bot_left.x, bot_left.y), Point(bot_right.x, bot_right.y)),
-            Triangle(Point(top_right.x, top_right.y), Point(top_left.x, top_left.y), Point(bot_right.x, bot_right.y))
-        ]
+        # Store original positions copy from triangles usefull for rotation
+        self.original_triangles = copy.deepcopy(self.triangles)
     
     def set_size(self, new_size: float):
         """Update the square's size and recreate triangles"""
         self.size = new_size
+        self._create_triangles()
+
+        # Update rotation too 
+        if self.current_rotation != 0:
+            self.rotate(self.current_rotation, self.rotation_origin)
+
+class Circle(Shape):
+    def __init__(self, center: Point, radius: float, color=(255, 255, 255)):
+        super().__init__(center, color)
+        self.radius = radius
+        self._create_triangles()
+    
+    def _create_triangles(self):
+        """Create triangles based on radius and center"""
+        self.triangles = []
+        TOTAL_TRIANGLES = 60 
+
+        for i in range(TOTAL_TRIANGLES):
+            p1_angle = 2 * math.pi / TOTAL_TRIANGLES * i
+            p2_angle = 2 * math.pi / TOTAL_TRIANGLES * (i + 1)
+
+            self.triangles.append(
+                Triangle(
+                    self.center,
+                    Point(self.center.x + self.radius * math.cos(p1_angle), self.center.y + self.radius * math.sin(p1_angle)),
+                    Point(self.center.x + self.radius * math.cos(p2_angle), self.center.y + self.radius * math.sin(p2_angle)),
+                )
+            )
+        
+        self.original_triangles = copy.deepcopy(self.triangles)
+
+    def set_radius(self, new_radius: float):
+        """Update the circle's radius and recreate triangles"""
+        self.radius = new_radius
         self._create_triangles()
 
         # Update rotation too 

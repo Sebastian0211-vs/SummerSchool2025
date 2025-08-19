@@ -1,7 +1,8 @@
 import pygame
 import sys
 import random
-from .shape import Point, Square
+import math
+from .shape import Point, Square, Circle
 
 class AudioVisualizer:
     # Singleton: ensure only one instance of AudioVisualizer exists
@@ -34,25 +35,30 @@ class AudioVisualizer:
         self.running = True
         self.initialized = True
         
-        # Create squares for rotation demo
+        # Create shapes for rotation demo
         self.square1 = Square(Point(self.width // 2, self.height // 2), 80, (255, 255, 255))  # White square rotating around its center
-        self.square2 = Square(Point(self.width // 2 - 100, self.height // 2), 60, (255, 100, 100))  # Red square rotating around offset point
+        self.circle2 = Circle(Point(self.width // 2 - 200, self.height // 2), 30, (255, 100, 100))  # Red circle rotating around offset point
+        
+        # Pulsation variables for the circle
+        self.base_radius = 30
+        self.pulse_amplitude = 20  # How much bigger/smaller it gets
+        self.pulse_speed = 0.05    # How fast it pulsates
     
     def draw_squares(self):
         # Square 1: Rotate around its own center (white) - no origin specified = uses center
         self.square1.rotate(self.square1.current_rotation + 0.02)
         
-        # Square 2: Grow by random amount and rotate around offset point (red)
-        growth = random.uniform(0.1, 2.0)  # Random growth between 0.1 and 2.0 pixels
-        new_size = self.square2.size + growth
-        self.square2.set_size(new_size)
+        # Circle 2: Pulsate (grow and shrink) and rotate around offset point (red)
+        pulse_factor = math.sin(pygame.time.get_ticks() * self.pulse_speed / 100)  # Oscillates between -1 and 1
+        new_radius = self.base_radius + self.pulse_amplitude * pulse_factor
+        self.circle2.set_radius(max(5, new_radius))  # Ensure minimum radius of 5
         
-        offset_point = Point(self.square2.center.x + 100, self.square2.center.y)
-        self.square2.rotate(self.square2.current_rotation + 0.03, offset_point)
+        offset_point = Point(self.circle2.center.x + 150, self.circle2.center.y)
+        self.circle2.rotate(self.circle2.current_rotation + 0.03, offset_point)
         
-        # Draw both squares using their draw method
+        # Draw both shapes using their draw method
         self.square1.draw(self.screen)
-        self.square2.draw(self.screen)
+        self.circle2.draw(self.screen)
     
     def run(self):
         # Main loop
