@@ -4,18 +4,28 @@ from .models import Note
 
 
 def parse_midi(filename: str) -> Dict[int, List[Note]]:
-    """Parse a MIDI file and extract notes by channel.
-    
+    """Parse a MIDI file and extract notes grouped by channel.
+
+    This function reads a MIDI file, tracks active notes, and converts
+    MIDI events (`note_on`, `note_off`, and `set_tempo`) into structured
+    `Note` objects. Notes are grouped by their MIDI channel.
+
     Args:
-        filename: Path to the MIDI file
-        
+        filename (str): Path to the MIDI file.
+
     Returns:
-        Dictionary mapping channel numbers to lists of Note objects
+        Dict[int, List[Note]]: A dictionary mapping each channel number (0–15)
+        to a list of `Note` objects extracted from the file.
+
+    Example:
+        >>> notes_by_channel = parse_midi("example.mid")
+        >>> len(notes_by_channel[0])
+        42
     """
     mid = mido.MidiFile(filename)
 
     ticks_per_beat = mid.ticks_per_beat
-    tempo = 500000
+    tempo = 500000  # Default tempo (microseconds per beat = 120 BPM)
     tempo_changes = [(0, tempo)]
 
     active_notes = {}
