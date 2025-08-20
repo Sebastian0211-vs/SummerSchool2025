@@ -2,7 +2,7 @@ import librosa
 import math
 
 #//////////////////////Initial test/////////////////////////
-filename = "src/audio/res/samples/PinkPanther_Piano_Only.mp3"
+filename = "src/audio/res/samples/PinkPanther_Trumpet_Only.mp3"
 #filename = "src/audio/res/samples/wavSample.wav"
 y, sr = librosa.load(filename, sr=None)
 #print(y)
@@ -22,7 +22,7 @@ from sound_to_midi.monophonic import midiutil
 
 
 fileout = 'src/audio/res/samples/midiOutputs/testMidi.mid'
-v
+
 midi = wave_to_midi(y)
 with open(fileout, 'wb') as f:
     midi.writeFile(f)
@@ -36,29 +36,29 @@ midiTable = [] #the index is the timestamp and the value is the note
 def whichNote(nbr: float):
     match nbr:
         case 0:
-            return "C5"
+            return "C4"
         case 1:
-            return "C#5"
+            return "C#4"
         case 2:
-            return "D5"
+            return "D4"
         case 3:
-            return "D#5"
+            return "D#4"
         case 4:
-            return "E5"
+            return "E4"
         case 5:
-            return "F5"
+            return "F4"
         case 6:
-            return "F#5"
+            return "F#4"
         case 7:
-            return "G5"
+            return "G4"
         case 8:
-            return "G#5"
+            return "G#4"
         case 9:
-            return "A5"
+            return "A4"
         case 10:
-            return "A#5"
+            return "A#4"
         case 11:
-            return "B5"
+            return "B4"
 
 '''
 Gets the strongest note on the chroma_cens chart for each time stamp and 
@@ -66,14 +66,21 @@ puts it in a table, where it is converted beforehand into midi notes
 thanks to librosa's note_to_midi
 '''
 for i in range(len(chroma_cens[0])):
-    max = 0
+    max1 = 0
+    max2 = 0
+    max3 = 0
+    max4 = 0
+    max5 = 0
     counter = 0
     for j in range(len(chroma_cens)):
-        if(chroma_cens[j][i] > max):
-            max = chroma_cens[j][i]
+        if(chroma_cens[j][i] > max1):
+            #max5 = max4
+            #max4 = max3
+            #max3 = max2
+            max2 = max1
+            max1 = chroma_cens[j][i]
             counter += 1
-        #t = max(chroma_cens[j][i])
-    midiTable.append(librosa.note_to_midi(whichNote(counter)))
+    midiTable.append(librosa.note_to_midi(whichNote((counter-1)%12)))
 
 
 '''
