@@ -115,16 +115,12 @@ def bandpass_mask(freqs: np.ndarray, low_cutoff_start: float, low_cutoff_end: fl
     Garde une zone de fréquences précises (trompette),
     en atténuant ce qui est trop bas ou trop haut.
     """
-    hp = np.zeros_like(freqs)
+    hp = np.zeros_like(freqs) # High-pass filter
     hp[freqs >= low_cutoff_end] = 1.0
     band_low = (freqs > low_cutoff_start) & (freqs < low_cutoff_end)
     hp[band_low] = 0.5 * (1 - np.cos(np.pi * (freqs[band_low] - low_cutoff_start) / (low_cutoff_end - low_cutoff_start)))
 
-    lp = np.ones_like(freqs)
-    lp[freqs >= high_cutoff_end] = 0.0
-    band_high = (freqs >= high_cutoff_start) & (freqs < high_cutoff_end)
-    lp[band_high] = 0.5 * (1 + np.cos(np.pi * (freqs[band_high] - high_cutoff_start) / (high_cutoff_end - high_cutoff_start)))
-
+    lp = lowpass_mask(freqs, high_cutoff_start, high_cutoff_end)  # Low-pass filter
     return hp * lp
 
 
