@@ -1,0 +1,24 @@
+site_name: SummerSchool2025
+theme:
+  name: material
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          paths:
+            - src
+          options:
+            docstring_style: google
+            show_source: true
+
+nav:
+  - Home: index.md
+  - API:
+      - Audio: api_audio.md
+      - MIDI: api_midi.md
+
+# Optional: watch code for live-reload too
+watch:
+  - src
