@@ -167,7 +167,7 @@ class Triangle(Shape):
         center_x = (a.x + b.x + c.x) / 3
         center_y = (a.y + b.y + c.y) / 3
         center = Point(center_x, center_y)
-        
+
         super().__init__(center, color)
         self.a, self.b, self.c = a, b, c
         self._create_triangles()
@@ -180,11 +180,11 @@ class Triangle(Shape):
     def set_points(self, a: Point, b: Point, c: Point):
         """Update the triangle's points and recreate triangle"""
         self.a, self.b, self.c = a, b, c
-        
+
         # Update center
         self.center.x = (a.x + b.x + c.x) / 3
         self.center.y = (a.y + b.y + c.y) / 3
-        
+
         self._create_triangles()
 
         # Update rotation too
