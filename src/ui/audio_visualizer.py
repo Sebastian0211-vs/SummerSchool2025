@@ -1,7 +1,7 @@
 import pygame
 import sys
 import math
-from .shape import Point, Square, Circle, Triangle
+from .shape import Point, Square, Circle, Triangle, Rectangle, Oval
 
 
 class AudioVisualizer:
@@ -59,10 +59,34 @@ class AudioVisualizer:
             (100, 255, 100),  # Green color
         )
 
+        # Create a rectangle that changes dimensions
+        self.rectangle4 = Rectangle(
+            Point(self.width // 2 - 100, self.height // 2 + 200), 
+            60, 100,  # height, width
+            (100, 100, 255)  # Blue color
+        )
+        
+        # Create an oval that morphs its radii
+        self.oval5 = Oval(
+            Point(self.width // 2 + 100, self.height // 2 + 200),
+            50, 30,  # rx, ry  
+            (255, 255, 100)  # Yellow color
+        )
+
         # Pulsation variables for the circle
         self.base_radius = 30
         self.pulse_amplitude = 20  # How much bigger/smaller it gets
         self.pulse_speed = 0.05  # How fast it pulsates
+        
+        # Rectangle morphing variables
+        self.base_width = 100
+        self.base_height = 60
+        self.morph_speed = 0.03
+        
+        # Oval morphing variables  
+        self.base_rx = 50
+        self.base_ry = 30
+        self.oval_speed = 0.04
 
     def draw_squares(self):
         # Square 1: Rotate around its own center (white) - no origin specified = uses center
@@ -75,16 +99,40 @@ class AudioVisualizer:
         new_radius = self.base_radius + self.pulse_amplitude * pulse_factor
         self.circle2.set_radius(max(5, new_radius))  # Ensure minimum radius of 5
 
-        offset_point = Point(self.circle2.center.x + 150, self.circle2.center.y)
-        self.circle2.rotate(self.circle2.current_rotation + 0.03, offset_point)
+        self.circle2.rotate(self.circle2.current_rotation + 0.03, self.square1.center)
 
         # Triangle 3: Rotate around its own center (green)
         self.triangle3.rotate(self.triangle3.current_rotation + 0.04)
+
+        # Rectangle 4: Morph width/height and rotate (blue)
+        time = pygame.time.get_ticks()
+        width_factor = math.sin(time * self.morph_speed / 100)
+        height_factor = math.cos(time * self.morph_speed / 100)
+        
+        new_width = self.base_width + 40 * width_factor
+        new_height = self.base_height + 30 * height_factor
+        
+        self.rectangle4.set_width(new_width)
+        self.rectangle4.set_height(new_height)
+        self.rectangle4.rotate(self.rectangle4.current_rotation + 0.025)
+
+        # Oval 5: Morph rx/ry and rotate (yellow)
+        rx_factor = math.sin(time * self.oval_speed / 100) 
+        ry_factor = math.cos(time * self.oval_speed / 100 * 1.3)  # Different frequency
+        
+        new_rx = self.base_rx + 25 * rx_factor
+        new_ry = self.base_ry + 20 * ry_factor
+        
+        self.oval5.set_rx(new_rx)
+        self.oval5.set_ry(new_ry)
+        self.oval5.rotate(self.oval5.current_rotation + 0.035)
 
         # Draw all shapes using their draw method
         self.square1.draw(self.screen)
         self.circle2.draw(self.screen)
         self.triangle3.draw(self.screen)
+        self.rectangle4.draw(self.screen)
+        self.oval5.draw(self.screen)
 
     def run(self):
         # Main loop
