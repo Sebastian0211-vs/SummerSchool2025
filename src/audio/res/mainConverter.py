@@ -5,9 +5,9 @@ from sound_to_midi.monophonic import wave_to_midi
 from sound_to_midi.monophonic import midiutil
 
 '''
-Initial test
+//////////////////////Initial test//////////////////////
 '''
-filename = "src/audio/res/samples/PinkPanther_Piano_Only.mp3"
+filename = "src/audio/res/samples/PinkPanther_Trumpet_Only.mp3"
 #filename = "src/audio/res/samples/wavSample.wav"
 y, sr = librosa.load(filename, sr=None)
 #print(y)
@@ -19,9 +19,10 @@ tempo, beatFrames = librosa.beat.beat_track(y=y, sr=sr)
 #print(format(tempo))
 #print(beatTimes)
 audioBPM = math.ceil(tempo)
-print("This be my bpm estimate: " + audioBPM)
+print("This be my bpm estimate: ", audioBPM)
 
 '''
+////////////////////// //////////////////////
 Using git's sound_to_midi that utilizes librosa
 So attempting to improve it in order to have a
 more accurate transposer.
@@ -33,5 +34,4 @@ midi = wave_to_midi(y)
 with open(fileout, 'wb') as f:
     midi.writeFile(f)
 
-
-print("FINISHED")
+print("///////////////////FINISHED///////////////////")
