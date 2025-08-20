@@ -24,6 +24,11 @@ class Point:
         self.x = rotated_x + origin.x
         self.y = rotated_y + origin.y
 
+    def translate(self, dx: float, dy: float):
+        """Translate the point by the given offset"""
+        self.x += dx
+        self.y += dy
+
 
 class TrianglePrimitive:
     def __init__(self, a: Point, b: Point, c: Point):
@@ -50,7 +55,6 @@ class Shape:
 
         # Rotation uses
         self.current_rotation = 0.0
-        self.rotation_origin = None
 
     def get_triangles(self) -> list[TrianglePrimitive]:
         return self.triangles
@@ -60,8 +64,7 @@ class Shape:
         if origin is None:
             origin = self.center
 
-        self.current_rotation = angle
-        self.rotation_origin = origin
+        self.current_rotation = angle % (math.pi * 2)
 
         # Update TrianglePrimitive's points
         for i, (orig_a, orig_b, orig_c) in enumerate(self.original_coords):
@@ -77,10 +80,26 @@ class Shape:
             triangle.b.rotate(angle, origin)
             triangle.c.rotate(angle, origin)
 
+    def translate(self, dx: float, dy: float):
+        """Translate the shape by moving all triangles and updating center"""
+        # Update center
+        self.center.translate(dx, dy)
+
+        # Update all triangle points
+        for triangle in self.triangles:
+            triangle.a.translate(dx, dy)
+            triangle.b.translate(dx, dy)
+            triangle.c.translate(dx, dy)
+
+        # Update original coordinates to maintain correct rotation reference
+        self.original_coords = [
+            ((t.a.x, t.a.y), (t.b.x, t.b.y), (t.c.x, t.c.y)) for t in self.triangles
+        ]
+
     def _apply_current_rotation(self) -> bool:
         """Apply current rotation without recreating objects"""
         if self.current_rotation != 0:
-            self.rotate(self.current_rotation, self.rotation_origin)
+            self.rotate(self.current_rotation)
             return True
         return False
 
