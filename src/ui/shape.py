@@ -190,3 +190,54 @@ class Triangle(Shape):
         # Update rotation too
         if self.current_rotation != 0:
             self.rotate(self.current_rotation, self.rotation_origin)
+
+
+class Oval(Shape):
+    def __init__(self, center: Point, rx: float, ry: float, color=(255, 255, 255)):
+        super().__init__(center, color)
+        self.rx, self.ry = rx, ry
+
+        self._create_triangles()
+
+    def _create_triangles(self):
+        """Create triangles based on rx, ry and center"""
+        self.triangles = []
+        TOTAL_TRIANGLES = 60
+
+        for i in range(TOTAL_TRIANGLES):
+            p1_angle = 2 * math.pi / TOTAL_TRIANGLES * i
+            p2_angle = 2 * math.pi / TOTAL_TRIANGLES * (i + 1)
+
+            self.triangles.append(
+                TrianglePrimitive(
+                    self.center,
+                    Point(
+                        self.center.x + self.rx * math.cos(p1_angle),
+                        self.center.y + self.ry * math.sin(p1_angle),
+                    ),
+                    Point(
+                        self.center.x + self.rx * math.cos(p2_angle),
+                        self.center.y + self.ry * math.sin(p2_angle),
+                    ),
+                )
+            )
+
+        self.original_triangles = copy.deepcopy(self.triangles)
+
+    def set_rx(self, rx: float):
+        self.rx = rx
+
+        self._create_triangles()
+
+        # Update rotation too
+        if self.current_rotation != 0:
+            self.rotate(self.current_rotation, self.rotation_origin)
+
+    def set_ry(self, ry: float):
+        self.ry = ry
+
+        self._create_triangles()
+
+        # Update rotation too
+        if self.current_rotation != 0:
+            self.rotate(self.current_rotation, self.rotation_origin)
