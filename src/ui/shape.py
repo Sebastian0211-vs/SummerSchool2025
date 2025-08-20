@@ -241,3 +241,48 @@ class Oval(Shape):
         # Update rotation too
         if self.current_rotation != 0:
             self.rotate(self.current_rotation, self.rotation_origin)
+
+
+class Rectangle(Shape):
+    def __init__(
+        self, center: Point, height: float, width: float, color=(255, 255, 255)
+    ):
+        super().__init__(center, color)
+        self.width, self.height = width, height
+        self._create_triangles()
+
+    def _create_triangles(self):
+        """Create triangles based on current width, height and center"""
+        half_width = self.width / 2
+        half_height = self.height / 2
+
+        top_left = Point(self.center.x - half_width, self.center.y - half_height)
+        top_right = Point(self.center.x + half_width, self.center.y - half_height)
+        bot_left = Point(self.center.x - half_width, self.center.y + half_height)
+        bot_right = Point(self.center.x + half_width, self.center.y + half_height)
+
+        self.triangles = [
+            TrianglePrimitive(top_left, bot_left, bot_right),
+            TrianglePrimitive(top_right, top_left, bot_right),
+        ]
+
+        # Store original positions copy from triangles usefull for rotation
+        self.original_triangles = copy.deepcopy(self.triangles)
+
+    def set_width(self, new_width: float):
+        """Update the rectangle's width and recreate triangles"""
+        self.width = new_width
+        self._create_triangles()
+
+        # Update rotation too
+        if self.current_rotation != 0:
+            self.rotate(self.current_rotation, self.rotation_origin)
+
+    def set_height(self, new_height: float):
+        """Update the rectangle's height and recreate triangles"""
+        self.height = new_height
+        self._create_triangles()
+
+        # Update rotation too
+        if self.current_rotation != 0:
+            self.rotate(self.current_rotation, self.rotation_origin)
