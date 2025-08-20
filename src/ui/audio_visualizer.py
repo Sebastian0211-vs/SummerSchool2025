@@ -2,7 +2,7 @@ import pygame
 import sys
 import random
 import math
-from .shape import Point, Square, Circle
+from .shape import Point, Square, Circle, Triangle
 
 class AudioVisualizer:
     # Singleton: ensure only one instance of AudioVisualizer exists

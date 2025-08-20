@@ -26,7 +26,7 @@ class Point:
         self.y = rotated_y + origin.y
 
 
-class Triangle:
+class TrianglePrimitive:
     def __init__(self, a: Point, b: Point, c: Point):
         self.a, self.b, self.c = a, b, c
 
@@ -38,10 +38,10 @@ class Triangle:
         pygame.draw.polygon(screen, color, points)
 
     def __repr__(self):
-        return f"Triangle: a:({self.a}), b:({self.b}), c:({self.c})"
+        return f"TrianglePrimitive: a:({self.a}), b:({self.b}), c:({self.c})"
 
 
-# Shapes are exclusively made of triangles
+# Shapes are exclusively made of triangle primitives
 class Shape:
     def __init__(self, center: Point, color=(255, 255, 255)):
         self.center = center
@@ -53,7 +53,7 @@ class Shape:
         self.current_rotation = 0.0
         self.rotation_origin = None
 
-    def get_triangles(self) -> list[Triangle]:
+    def get_triangles(self) -> list[TrianglePrimitive]:
         return self.triangles
 
     def rotate(self, angle: float, origin=None):
@@ -103,8 +103,8 @@ class Square(Shape):
         bot_right = Point(self.center.x + half_size, self.center.y + half_size)
 
         self.triangles = [
-            Triangle(top_left, bot_left, bot_right),
-            Triangle(top_right, top_left, bot_right),
+            TrianglePrimitive(top_left, bot_left, bot_right),
+            TrianglePrimitive(top_right, top_left, bot_right),
         ]
 
         # Store original positions copy from triangles usefull for rotation
@@ -136,7 +136,7 @@ class Circle(Shape):
             p2_angle = 2 * math.pi / TOTAL_TRIANGLES * (i + 1)
 
             self.triangles.append(
-                Triangle(
+                TrianglePrimitive(
                     self.center,
                     Point(
                         self.center.x + self.radius * math.cos(p1_angle),
@@ -154,6 +154,37 @@ class Circle(Shape):
     def set_radius(self, new_radius: float):
         """Update the circle's radius and recreate triangles"""
         self.radius = new_radius
+        self._create_triangles()
+
+        # Update rotation too
+        if self.current_rotation != 0:
+            self.rotate(self.current_rotation, self.rotation_origin)
+
+
+class Triangle(Shape):
+    def __init__(self, a: Point, b: Point, c: Point, color=(255, 255, 255)):
+        # Calculate center as the centroid of the triangle
+        center_x = (a.x + b.x + c.x) / 3
+        center_y = (a.y + b.y + c.y) / 3
+        center = Point(center_x, center_y)
+        
+        super().__init__(center, color)
+        self.a, self.b, self.c = a, b, c
+        self._create_triangles()
+
+    def _create_triangles(self):
+        """Create a single triangle from the three points"""
+        self.triangles = [TrianglePrimitive(self.a, self.b, self.c)]
+        self.original_triangles = copy.deepcopy(self.triangles)
+
+    def set_points(self, a: Point, b: Point, c: Point):
+        """Update the triangle's points and recreate triangle"""
+        self.a, self.b, self.c = a, b, c
+        
+        # Update center
+        self.center.x = (a.x + b.x + c.x) / 3
+        self.center.y = (a.y + b.y + c.y) / 3
+        
         self._create_triangles()
 
         # Update rotation too
