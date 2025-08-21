@@ -59,6 +59,7 @@ class Shape:
         self.color = color  # RGB tuple
         self.triangles = []
         self.original_coords = []  # Store original coordinates
+        self.outerPoints = {}  # Store all outer points usefull for complexe shapes
 
         # Rotation uses
         self.current_rotation = 0.0
@@ -125,14 +126,38 @@ class Square(Shape):
     def _create_triangles(self):
         """Create triangles based on current size and center"""
         half_size = self.size / 2
+
+        # Outer points
         top_left = Point(self.center.x - half_size, self.center.y - half_size)
         top_right = Point(self.center.x + half_size, self.center.y - half_size)
         bot_left = Point(self.center.x - half_size, self.center.y + half_size)
         bot_right = Point(self.center.x + half_size, self.center.y + half_size)
+        top_middle = Point(self.center.x, self.center.y - half_size)
+        bottom_middle = Point(self.center.x, self.center.y + half_size)
+        left_middle = Point(self.center.x - half_size, self.center.y)
+        right_middle = Point(self.center.x + half_size, self.center.y)
+
+        self.outerPoints = {
+            "top_left": top_left,
+            "top_right": top_right,
+            "bottom_left": bot_left,
+            "bottom_right": bot_right,
+            "top_middle": top_middle,
+            "bottom_middle": bottom_middle,
+            "left_middle": left_middle,
+            "right_middle": right_middle,
+        }
 
         self.triangles = [
-            TrianglePrimitive(top_left, bot_left, bot_right),
-            TrianglePrimitive(top_right, top_left, bot_right),
+            # 8 triangles from center to each corner and middle point
+            TrianglePrimitive(self.center, top_left, top_middle),
+            TrianglePrimitive(self.center, top_middle, top_right),
+            TrianglePrimitive(self.center, top_right, right_middle),
+            TrianglePrimitive(self.center, right_middle, bot_right),
+            TrianglePrimitive(self.center, bot_right, bottom_middle),
+            TrianglePrimitive(self.center, bottom_middle, bot_left),
+            TrianglePrimitive(self.center, bot_left, left_middle),
+            TrianglePrimitive(self.center, left_middle, top_left),
         ]
 
         # Store original coordinates
@@ -165,17 +190,24 @@ class Circle(Shape):
             p1_angle = 2 * math.pi / TOTAL_TRIANGLES * i
             p2_angle = 2 * math.pi / TOTAL_TRIANGLES * (i + 1)
 
+            # Create outer points
+            p1 = Point(
+                self.center.x + self.radius * math.cos(p1_angle),
+                self.center.y + self.radius * math.sin(p1_angle),
+            )
+            p2 = Point(
+                self.center.x + self.radius * math.cos(p2_angle),
+                self.center.y + self.radius * math.sin(p2_angle),
+            )
+
+            # Store in outerPoints map by angle in degrees
+            self.outerPoints[360 / TOTAL_TRIANGLES * i] = p1
+
             self.triangles.append(
                 TrianglePrimitive(
                     Point(self.center.x, self.center.y),
-                    Point(
-                        self.center.x + self.radius * math.cos(p1_angle),
-                        self.center.y + self.radius * math.sin(p1_angle),
-                    ),
-                    Point(
-                        self.center.x + self.radius * math.cos(p2_angle),
-                        self.center.y + self.radius * math.sin(p2_angle),
-                    ),
+                    p1,
+                    p2,
                 )
             )
 
@@ -207,6 +239,13 @@ class Triangle(Shape):
     def _create_triangles(self):
         """Create a single triangle from the three points"""
         self.triangles = [TrianglePrimitive(self.a, self.b, self.c)]
+
+        self.outerPoints = {
+            "a": self.a,
+            "b": self.b,
+            "c": self.c,
+        }
+
         self.original_coords = [
             ((t.a.x, t.a.y), (t.b.x, t.b.y), (t.c.x, t.c.y)) for t in self.triangles
         ]
@@ -241,17 +280,23 @@ class Oval(Shape):
             p1_angle = 2 * math.pi / TOTAL_TRIANGLES * i
             p2_angle = 2 * math.pi / TOTAL_TRIANGLES * (i + 1)
 
+            # Create outer points
+            p1 = Point(
+                self.center.x + self.rx * math.cos(p1_angle),
+                self.center.y + self.ry * math.sin(p1_angle),
+            )
+            p2 = Point(
+                self.center.x + self.rx * math.cos(p2_angle),
+                self.center.y + self.ry * math.sin(p2_angle),
+            )
+
+            self.outerPoints[360 / TOTAL_TRIANGLES * i] = p1
+
             self.triangles.append(
                 TrianglePrimitive(
                     Point(self.center.x, self.center.y),
-                    Point(
-                        self.center.x + self.rx * math.cos(p1_angle),
-                        self.center.y + self.ry * math.sin(p1_angle),
-                    ),
-                    Point(
-                        self.center.x + self.rx * math.cos(p2_angle),
-                        self.center.y + self.ry * math.sin(p2_angle),
-                    ),
+                    p1,
+                    p2,
                 )
             )
 
@@ -289,14 +334,36 @@ class Rectangle(Shape):
         half_width = self.width / 2
         half_height = self.height / 2
 
+        # Outer points
         top_left = Point(self.center.x - half_width, self.center.y - half_height)
         top_right = Point(self.center.x + half_width, self.center.y - half_height)
         bot_left = Point(self.center.x - half_width, self.center.y + half_height)
         bot_right = Point(self.center.x + half_width, self.center.y + half_height)
+        top_middle = Point(self.center.x, self.center.y - half_height)
+        bottom_middle = Point(self.center.x, self.center.y + half_height)
+        left_middle = Point(self.center.x - half_width, self.center.y)
+        right_middle = Point(self.center.x + half_width, self.center.y)
+
+        self.outerPoints = {
+            "top_left": top_left,
+            "top_right": top_right,
+            "bottom_left": bot_left,
+            "bottom_right": bot_right,
+            "top_middle": top_middle,
+            "bottom_middle": bottom_middle,
+            "left_middle": left_middle,
+            "right_middle": right_middle,
+        }
 
         self.triangles = [
-            TrianglePrimitive(top_left, bot_left, bot_right),
-            TrianglePrimitive(top_right, top_left, bot_right),
+            TrianglePrimitive(self.center, top_left, top_middle),
+            TrianglePrimitive(self.center, top_middle, top_right),
+            TrianglePrimitive(self.center, top_right, right_middle),
+            TrianglePrimitive(self.center, right_middle, bot_right),
+            TrianglePrimitive(self.center, bot_right, bottom_middle),
+            TrianglePrimitive(self.center, bottom_middle, bot_left),
+            TrianglePrimitive(self.center, bot_left, left_middle),
+            TrianglePrimitive(self.center, left_middle, top_left),
         ]
 
         # Store original coordinates

@@ -170,6 +170,12 @@ class AudioVisualizer:
         self.rectangle4.draw(self.screen)
         self.oval5.draw(self.screen)
         
+        # Draw points at 0°, 90°, 180° from circle's outerPoints
+        for angle, color in [(0, (255, 0, 0)), (90, (0, 255, 0)), (180, (0, 0, 255))]:
+            if angle in self.circle2.outerPoints:
+                point = self.circle2.outerPoints[angle]
+                pygame.draw.circle(self.screen, color, (int(point.x), int(point.y)), 5)
+        
         # Draw translation demo shape
         self.orbital_circle.draw(self.screen)
 
