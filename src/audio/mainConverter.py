@@ -7,11 +7,11 @@ from sound_to_midi.monophonic import midiutil
 '''
 //////////////////////Initial test//////////////////////
 '''
-filename = "src/audio/res/samples/PinkPanther_Trumpet_Only.mp3"
-#filename = "src/audio/res/samples/wavSample.wav"
-y, sr = librosa.load(filename, sr=None)
-#print(y)
-#print(sr)
+filename = 'src/audio/res/samples/PinkPanther_Piano_Only.mp3'
+srate = librosa.get_samplerate(filename)
+y, sr = librosa.load(filename, sr=srate)
+#print("Nummer uno: ", y)
+#print("Nummer due", sr)
 
 tempo, beatFrames = librosa.beat.beat_track(y=y, sr=sr)
 #beatTimes = librosa.frames_to_time(beatFrames, sr=sr)
@@ -28,9 +28,9 @@ So attempting to improve it in order to have a
 more accurate transposer.
 '''
 #fileout = 'src/audio/res/midiOutputs/testMidiPiano.mid'
-fileout = 'src/audio/res/midiOutputs/test.mid'
+fileout = 'src/audio/res/midiOutputs/V1PinkPantherPiano.mid'
 
-midi = wave_to_midi(y)
+midi = wave_to_midi(y, sr)
 with open(fileout, 'wb') as f:
     midi.writeFile(f)
 
