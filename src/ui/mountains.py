@@ -1,19 +1,9 @@
-import pygame
-import random
 import math
+import random
+import pygame
 
-# Initialize pygame
-pygame.init()
+from shape import Point, Triangle
 
-# Screen settings
-WIDTH = 1920
-HEIGHT = 1080
-screen = pygame.display.set_mode((WIDTH, HEIGHT))
-pygame.display.set_caption("Multi-layer mountains made of triangles")
-
-# Colors
-WHITE = (255, 255, 255)
-BLACK = (0, 0, 0)
 # Colors for different layers (from far to near)
 MOUNTAIN_COLORS = [
     (180, 200, 220),  # farthest layer — very light
@@ -24,28 +14,30 @@ TRIANGLE_OUTLINE = (60, 60, 60)
 
 
 class MountainLayer:
-    def __init__(self, layer_index, base_horizon_y):
+    def __init__(self, width, height, layer_index, base_horizon_y):
+        self.width = width
+        self.height = height
         self.layer_index = layer_index
         # Each farther layer is slightly higher (reduced offset)
         self.horizon_y = base_horizon_y + layer_index * 15
         self.mountain_points = []
-        self.triangles = []
+        self.triangles = []  # Will store Triangle objects
         self.color = MOUNTAIN_COLORS[layer_index]
 
         # Triangle size decreases for farther layers
         self.triangle_size = 20 - layer_index * 2
 
-        # NOTE: triangle_size must stay > 0; if you add more layers, clamp this value.
+        # NOTE: triangle_size must stay > 0
 
     def generate_mountain_outline(self):
         """Generate a zig-zag mountain outline (polyline)."""
         self.mountain_points = []
 
         # Start at the left edge at the horizon level
-        self.mountain_points.append((0, self.horizon_y))
+        self.mountain_points.append(Point(0, self.horizon_y))
 
         x = 0
-        while x < WIDTH:
+        while x < self.width:
             # Random segment width (larger for farther layers)
             segment_width = random.randint(60 + self.layer_index * 20, 180 + self.layer_index * 30)
             # Random peak height (smaller for farther layers)
@@ -56,21 +48,20 @@ class MountainLayer:
 
             # Add peak (move half segment)
             x += segment_width // 2
-            if x < WIDTH:
-                self.mountain_points.append((x, peak_y))
+            if x < self.width:
+                self.mountain_points.append(Point(x, peak_y))
 
             # Add descent (move the other half)
             x += segment_width // 2
-            if x < WIDTH:
+            if x < self.width:
                 valley_height = random.randint(30, max(30, peak_height // 2))
                 valley_y = self.horizon_y - valley_height
-                self.mountain_points.append((x, valley_y))
+                self.mountain_points.append(Point(x, valley_y))
 
         # Finish at the right edge
-        self.mountain_points.append((WIDTH, self.horizon_y))
+        self.mountain_points.append(Point(self.width, self.horizon_y))
 
         # NOTE: mountain_points is a polyline that always begins and ends on horizon_y.
-        # This makes interpolation straightforward when querying the outline.
 
     def point_in_mountain(self, x, y):
         """Return whether the point (x,y) is inside the mountain area (between outline and horizon).
@@ -84,8 +75,8 @@ class MountainLayer:
 
         # Find which outline segment contains x, then interpolate outline y.
         for i in range(len(self.mountain_points) - 1):
-            x1, y1 = self.mountain_points[i]
-            x2, y2 = self.mountain_points[i + 1]
+            x1, y1 = self.mountain_points[i].x, self.mountain_points[i].y
+            x2, y2 = self.mountain_points[i + 1].x, self.mountain_points[i + 1].y
 
             if x1 <= x <= x2:
                 # Interpolate outline height
@@ -101,8 +92,8 @@ class MountainLayer:
     def get_mountain_y_at_x(self, x):
         """Return the outline y coordinate at a given x (linear interpolation)."""
         for i in range(len(self.mountain_points) - 1):
-            x1, y1 = self.mountain_points[i]
-            x2, y2 = self.mountain_points[i + 1]
+            x1, y1 = self.mountain_points[i].x, self.mountain_points[i].y
+            x2, y2 = self.mountain_points[i + 1].x, self.mountain_points[i + 1].y
 
             if x1 <= x <= x2:
                 if x2 - x1 != 0:
@@ -114,7 +105,7 @@ class MountainLayer:
 
     def generate_triangles(self):
         """Generate triangles and clamp their vertices so they stay between outline and horizon."""
-        self.triangles = []
+        self.triangles = []  # Will store Triangle objects
 
         triangle_height = self.triangle_size * math.sqrt(3) / 2
         int_triangle_height = int(round(triangle_height))
@@ -123,81 +114,82 @@ class MountainLayer:
 
         # NOTE: we generate a triangular grid (two triangles per cell: up and down).
         # We step y by the triangle height and x by triangle_size, offsetting every other row.
-        for y in range(-self.triangle_size, HEIGHT + self.triangle_size, int_triangle_height):
-            for x in range(-self.triangle_size, WIDTH + self.triangle_size, self.triangle_size):
+        for y in range(-self.triangle_size, self.height + self.triangle_size, int_triangle_height):
+            for x in range(-self.triangle_size, self.width + self.triangle_size, self.triangle_size):
                 # Offset every other row for a staggered (hex-like) tiling
                 x_offset = self.triangle_size // 2 if ((y // int_triangle_height) % 2) == 0 else 0
                 x_pos = x + x_offset
 
                 # Upward-pointing triangle
                 tri_up = [
-                    (x_pos, y),
-                    (x_pos + self.triangle_size // 2, y - triangle_height),
-                    (x_pos + self.triangle_size, y)
+                    Point(x_pos, y),
+                    Point(x_pos + self.triangle_size // 2, y - triangle_height),
+                    Point(x_pos + self.triangle_size, y)
                 ]
                 # Downward-pointing triangle
                 tri_down = [
-                    (x_pos, y),
-                    (x_pos + self.triangle_size // 2, y + triangle_height),
-                    (x_pos + self.triangle_size, y)
+                    Point(x_pos, y),
+                    Point(x_pos + self.triangle_size // 2, y + triangle_height),
+                    Point(x_pos + self.triangle_size, y)
                 ]
 
-                for triangle in (tri_up, tri_down):
+                for triangle_points in (tri_up, tri_down):
                     # If at least one vertex is inside the mountain area, include triangle (then clamp)
-                    in_mountain = any(self.point_in_mountain(vx, vy) for vx, vy in triangle)
+                    in_mountain = any(self.point_in_mountain(p.x, p.y) for p in triangle_points)
 
                     if in_mountain:
                         vertices = []
-                        for vx, vy in triangle:
+                        for p in triangle_points:
                             # Clamp vertically: top boundary = outline (mountain_y), bottom = horizon_y
-                            mountain_y = self.get_mountain_y_at_x(vx)
-                            vy_clamped = max(mountain_y, min(vy, self.horizon_y))
+                            mountain_y = self.get_mountain_y_at_x(p.x)
+                            vy_clamped = max(mountain_y, min(p.y, self.horizon_y))
 
                             # Clamp horizontally to screen and round to integers for pygame
-                            vx_clamped = int(round(max(0, min(WIDTH, vx))))
-                            vy_clamped = int(round(max(0, min(HEIGHT, vy_clamped))))
-                            vertices.append((vx_clamped, vy_clamped))
+                            vx_clamped = int(round(max(0, min(self.width, p.x))))
+                            vy_clamped = int(round(max(0, min(self.height, vy_clamped))))
+                            vertices.append(Point(vx_clamped, vy_clamped))
 
-                        # Validate non-degenerate triangle (area check)
                         if len(vertices) == 3:
-                            area = abs((vertices[1][0] - vertices[0][0]) * (vertices[2][1] - vertices[0][1]) -
-                                       (vertices[2][0] - vertices[0][0]) * (vertices[1][1] - vertices[0][1]))
+                            p0, p1, p2 = vertices
+                            area = abs((p1.x - p0.x) * (p2.y - p0.y) -
+                                       (p2.x - p0.x) * (p1.y - p0.y))
                             if area > 1:
-                                self.triangles.append(vertices)
+                                color_variation = random.randint(-15, 15)
+                                color = (
+                                    max(0, min(255, self.color[0] + color_variation)),
+                                    max(0, min(255, self.color[1] + color_variation)),
+                                    max(0, min(255, self.color[2] + color_variation))
+                                )
+                                # Create Triangle object instead of storing raw vertices
+                                triangle_obj = Triangle(vertices[0], vertices[1], vertices[2], color=color)
+                                self.triangles.append(triangle_obj)
 
         # NOTE: This approach ensures triangles that cross the outline are trimmed to the mountain's fill,
         # producing a mosaic-like mountain surface.
 
     def draw(self, screen):
-        """Draw the mountain layer to the screen using the precomputed triangles."""
-        # Draw triangles
         for triangle in self.triangles:
-            # Slight color variation per triangle to add visual richness
-            color_variation = random.randint(-15, 15)
-            color = (
-                max(0, min(255, self.color[0] + color_variation)),
-                max(0, min(255, self.color[1] + color_variation)),
-                max(0, min(255, self.color[2] + color_variation))
-            )
-
-            pygame.draw.polygon(screen, color, triangle)
-            # Thinner outlines for far layers (example: draw outlines only for nearest)
-            outline_width = 1 if self.layer_index == 2 else 0
-            if outline_width > 0:
-                pygame.draw.polygon(screen, TRIANGLE_OUTLINE, triangle, outline_width)
+            triangle.draw(screen)
+            if self.layer_index == 2:  # Only draw outline for nearest layer
+                # Get the points from the triangle's TrianglePrimitive
+                primitives = triangle.get_triangles()
+                if primitives:
+                    points = [(p.x, p.y) for p in primitives[0].get_points()]
+                    pygame.draw.polygon(screen, TRIANGLE_OUTLINE, points, 1)
 
 
 class MountainGenerator:
-    def __init__(self):
+    def __init__(self, window_size):
+        self.width, self.height = window_size
         # Base horizon Y — adjust this to move all mountain layers up/down.
         # Smaller values move mountains higher on screen (y increases downward).
-        self.base_horizon_y = HEIGHT // 3
+        self.base_horizon_y = self.height // 3
 
-        # Create three mountain layers (indices 0..2, from far to near)
+        # Create three mountain layers (from far to near)
         self.layers = [
-            MountainLayer(0, self.base_horizon_y),  # farthest
-            MountainLayer(1, self.base_horizon_y),  # middle
-            MountainLayer(2, self.base_horizon_y)   # nearest
+            MountainLayer(self.width, self.height, 0, self.base_horizon_y),  # farthest
+            MountainLayer(self.width, self.height, 1, self.base_horizon_y),  # middle
+            MountainLayer(self.width, self.height, 2, self.base_horizon_y)   # nearest
         ]
 
         # NOTE: If you want interactive control over horizon, modify base_horizon_y
@@ -211,39 +203,8 @@ class MountainGenerator:
 
     def draw(self, screen):
         """Draw all mountain layers to the screen (from far to near)."""
-        # Fill background
-        screen.fill(WHITE)
 
         # Draw layers from farthest to nearest so nearer ones appear on top
         for layer in self.layers:
             layer.draw(screen)
-
-
-def main():
-    clock = pygame.time.Clock()
-    mountain_gen = MountainGenerator()
-
-    # Generate mountains initially
-    mountain_gen.generate_all_layers()
-
-    running = True
-    while running:
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                running = False
-            elif event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_SPACE:
-                    # Regenerate mountains on SPACE
-                    mountain_gen.generate_all_layers()
-
-        # Draw scene
-        mountain_gen.draw(screen)
-
-        pygame.display.flip()
-        clock.tick(2)  # NOTE: low FPS so generation changes are visible; increase for smoother animation
-
-    pygame.quit()
-
-
-if __name__ == "__main__":
-    main()
+            
