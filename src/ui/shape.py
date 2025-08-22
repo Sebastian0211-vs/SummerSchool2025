@@ -93,15 +93,25 @@ class Shape:
         # Update center
         self.center.translate(dx, dy)
 
-        # Update all triangle points
+        # Collect all unique points to avoid double-translation if triangles shared same points
+        unique_points = set()
         for triangle in self.triangles:
-            triangle.a.translate(dx, dy)
-            triangle.b.translate(dx, dy)
-            triangle.c.translate(dx, dy)
+            unique_points.add(triangle.a)
+            unique_points.add(triangle.b)
+            unique_points.add(triangle.c)
 
-        # Update original coordinates to maintain correct rotation reference
+        # Translate each unique point only once
+        for point in unique_points:
+            point.translate(dx, dy)
+
+        # Update original coordinates by applying translation offset
         self.original_coords = [
-            ((t.a.x, t.a.y), (t.b.x, t.b.y), (t.c.x, t.c.y)) for t in self.triangles
+            (
+                (orig_a[0] + dx, orig_a[1] + dy),
+                (orig_b[0] + dx, orig_b[1] + dy),
+                (orig_c[0] + dx, orig_c[1] + dy),
+            )
+            for (orig_a, orig_b, orig_c) in self.original_coords
         ]
 
     def _apply_current_rotation(self) -> bool:
@@ -150,14 +160,30 @@ class Square(Shape):
 
         self.triangles = [
             # 8 triangles from center to each corner and middle point
-            TrianglePrimitive(self.center, top_left, top_middle),
-            TrianglePrimitive(self.center, top_middle, top_right),
-            TrianglePrimitive(self.center, top_right, right_middle),
-            TrianglePrimitive(self.center, right_middle, bot_right),
-            TrianglePrimitive(self.center, bot_right, bottom_middle),
-            TrianglePrimitive(self.center, bottom_middle, bot_left),
-            TrianglePrimitive(self.center, bot_left, left_middle),
-            TrianglePrimitive(self.center, left_middle, top_left),
+            TrianglePrimitive(
+                Point(self.center.x, self.center.y), top_left, top_middle
+            ),
+            TrianglePrimitive(
+                Point(self.center.x, self.center.y), top_middle, top_right
+            ),
+            TrianglePrimitive(
+                Point(self.center.x, self.center.y), top_right, right_middle
+            ),
+            TrianglePrimitive(
+                Point(self.center.x, self.center.y), right_middle, bot_right
+            ),
+            TrianglePrimitive(
+                Point(self.center.x, self.center.y), bot_right, bottom_middle
+            ),
+            TrianglePrimitive(
+                Point(self.center.x, self.center.y), bottom_middle, bot_left
+            ),
+            TrianglePrimitive(
+                Point(self.center.x, self.center.y), bot_left, left_middle
+            ),
+            TrianglePrimitive(
+                Point(self.center.x, self.center.y), left_middle, top_left
+            ),
         ]
 
         # Store original coordinates
@@ -356,14 +382,30 @@ class Rectangle(Shape):
         }
 
         self.triangles = [
-            TrianglePrimitive(self.center, top_left, top_middle),
-            TrianglePrimitive(self.center, top_middle, top_right),
-            TrianglePrimitive(self.center, top_right, right_middle),
-            TrianglePrimitive(self.center, right_middle, bot_right),
-            TrianglePrimitive(self.center, bot_right, bottom_middle),
-            TrianglePrimitive(self.center, bottom_middle, bot_left),
-            TrianglePrimitive(self.center, bot_left, left_middle),
-            TrianglePrimitive(self.center, left_middle, top_left),
+            TrianglePrimitive(
+                Point(self.center.x, self.center.y), top_left, top_middle
+            ),
+            TrianglePrimitive(
+                Point(self.center.x, self.center.y), top_middle, top_right
+            ),
+            TrianglePrimitive(
+                Point(self.center.x, self.center.y), top_right, right_middle
+            ),
+            TrianglePrimitive(
+                Point(self.center.x, self.center.y), right_middle, bot_right
+            ),
+            TrianglePrimitive(
+                Point(self.center.x, self.center.y), bot_right, bottom_middle
+            ),
+            TrianglePrimitive(
+                Point(self.center.x, self.center.y), bottom_middle, bot_left
+            ),
+            TrianglePrimitive(
+                Point(self.center.x, self.center.y), bot_left, left_middle
+            ),
+            TrianglePrimitive(
+                Point(self.center.x, self.center.y), left_middle, top_left
+            ),
         ]
 
         # Store original coordinates
