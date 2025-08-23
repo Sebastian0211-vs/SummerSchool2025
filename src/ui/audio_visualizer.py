@@ -121,8 +121,16 @@ class AudioVisualizer:
         # Store triangle's home position for vertical movement
         self.triangle_home = Point(self.triangle3.center.x, self.triangle3.center.y)
 
-        # Add a cow
-        self.cow = Cow(Point(self.width // 2 - 300, self.height // 2 - 300))
+        # Add two cows - one facing right, one facing left
+        self.cow_right = Cow(Point(self.width // 2 - 300, self.height // 2 - 300), facing_direction=1)
+        self.cow_left = Cow(Point(self.width // 2 + 300, self.height // 2 - 300), facing_direction=-1)
+        
+        # Cow animation variables - restrict to 2/3 of screen
+        screen_range = self.height * 2/3  # 2/3 of screen height
+        start_y = self.height / 6  # Start at 1/6 from top
+        self.cow_min_y = start_y
+        self.cow_max_y = start_y + screen_range
+        self.cow_speed = 0.002  # Speed of vertical movement
 
     def draw_squares(self):
         current_time = pygame.time.get_ticks()
@@ -190,8 +198,8 @@ class AudioVisualizer:
 
         # Draw points at 0°, 90°, 180° from circle's outerPoints
         for angle, color in [(270, (255, 0, 0)), (90, (0, 255, 0)), (180, (0, 0, 255))]:
-            if angle in self.cow.thigh_1.outerPoints:
-                point = self.cow.thigh_1.outerPoints[angle]
+            if angle in self.cow_right.thigh_1.outerPoints:
+                point = self.cow_right.thigh_1.outerPoints[angle]
                 pygame.draw.circle(self.screen, color, (int(point.x), int(point.y)), 5)
 
         # Translation test: Draw triangle outer points to verify they update correctly
@@ -209,10 +217,11 @@ class AudioVisualizer:
         # Draw translation demo shape
         self.orbital_circle.draw(self.screen)
 
-        # Animate and draw the cow
-        walk_angle = current_time * 0.005  # Walking speed
-        self.cow.walk(walk_angle)
-        self.cow.draw(self.screen)
+        # Animate and draw both cows
+        self.animate_cow(current_time, self.cow_right)
+        self.animate_cow(current_time, self.cow_left, phase_offset=math.pi)  # Out of phase
+        self.cow_right.draw(self.screen)
+        self.cow_left.draw(self.screen)
 
     def animate_translations(self, time):
         """Handle translation animation for the orbital circle"""
@@ -242,6 +251,28 @@ class AudioVisualizer:
             self.window_center.x - self.orbital_circle.center.x,
         )
         self.orbital_circle.rotate(angle_to_center)
+
+    def animate_cow(self, time, cow, phase_offset=0):
+        """Handle cow animation with vertical movement and scale factor based on position"""
+        
+        # Calculate vertical position (oscillates between min and max Y)
+        y_progress = (math.sin(time * self.cow_speed + phase_offset) + 1) / 2  # 0 to 1
+        desired_y = self.cow_min_y + y_progress * (self.cow_max_y - self.cow_min_y)
+        
+        # Calculate translation needed
+        dy = desired_y - cow.center.y
+        
+        # Apply translation if needed
+        if abs(dy) > 0.1:
+            cow.translate(0, dy)
+        
+        # Calculate scale factor based on Y position (0.6 at top, 1.5 at bottom)
+        scale_factor = 0.6 + (1.5 - 0.6) * y_progress
+        cow.set_scale_factor(scale_factor)
+        
+        # Walking animation
+        walk_angle = time * 0.005
+        cow.walk(walk_angle)
 
     def run(self):
         # Main loop
