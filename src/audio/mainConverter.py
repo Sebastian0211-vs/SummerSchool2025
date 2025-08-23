@@ -7,7 +7,8 @@ from sound_to_midi.monophonic import midiutil
 '''
 //////////////////////Initial test//////////////////////
 '''
-filename = 'src/audio/res/samples/SebET.wav'
+filename = 'src/audio/res/samples/SebPPp2.wav'
+#filename = 'src/audio/res/samples/premade/PinkPanther_Trumpet_Only.mp3'
 #srate = librosa.get_samplerate(filename)
 y, sr = librosa.load(filename, sr=None)
 #print("Nummer uno: ", y)
@@ -27,7 +28,7 @@ Using git's sound_to_midi that utilizes librosa
 So attempting to improve it in order to have a
 more accurate transposer.
 '''
-fileout = 'src/audio/res/midiOutputs/Et2.mid'
+fileout = 'src/audio/res/midiOutputs/test.mid'
 
 midi = wave_to_midi(y, sr)
 with open(fileout, 'wb') as f:
