@@ -12,18 +12,136 @@ class Cow(Shape):
 
     def _create_cow(self):
 
-        # Legs configuration
-        THIGH_LEG_WIDTH = 25 * self.scale_factor
-        THIGH_LEG_HEIGHT = 50 * self.scale_factor
-        CALF_LEG_WIDTH = 20 * self.scale_factor
-        CALF_LEG_HEIGHT = 45 * self.scale_factor
-        KNEE_RADIUS = 12 * self.scale_factor
-        CLOG_SIZE = 18 * self.scale_factor
-        leg_spacing = 30 * self.scale_factor
+        # Neck length
+        NECK_LENGTH = 20 * self.scale_factor
+        HEAD_WIDTH = 30 * self.scale_factor
+        NOSE_RADIUS = 5 * self.scale_factor
+        FORHEAD_SIZE = 4 * self.scale_factor
 
-        # Building legs
+        # Body configuration
+        BODY_WIDTH = 140 * self.scale_factor
+        BODY_HEIGHT = 90 * self.scale_factor
+
+        # Legs configuration
+        THIGH_LEG_WIDTH = 18 * self.scale_factor
+        THIGH_LEG_HEIGHT = 30 * self.scale_factor
+        CALF_LEG_WIDTH = 16 * self.scale_factor
+        CALF_LEG_HEIGHT = 25 * self.scale_factor
+        KNEE_RADIUS = 8 * self.scale_factor
+        CLOG_SIZE = 14 * self.scale_factor
+        HIP_RADIUS = 6 * self.scale_factor
+        
+        # Body
+        self.body = Oval(
+            Point(self.center.x, self.center.y),
+            BODY_WIDTH / 2,
+            BODY_HEIGHT / 2,
+            self.color,
+        )
+
+        # Head
+        self.for_neck1 = Triangle(
+            self.body.outerPoints[318],
+            Point(self.body.outerPoints[18].x + NECK_LENGTH / 2, self.body.outerPoints[18].y),
+            self.body.outerPoints[24],
+            self.color
+        )
+        self.for_neck2 = Triangle(
+            self.for_neck1.a,
+            Point(self.body.outerPoints[312].x + 2 * NECK_LENGTH / 2,  self.body.outerPoints[312].y),
+            self.for_neck1.b,
+            self.color
+        )
+        dist_body_to_for_neck = self.for_neck2.b.x - self.body.outerPoints[312].x
+        self.for_neck_round = Oval(
+            center= Point(self.body.outerPoints[312].x + dist_body_to_for_neck / 2, self.body.outerPoints[312].y),
+            rx=dist_body_to_for_neck / 2,
+            ry=self.for_neck1.a.y - self.for_neck2.b.y,
+            color=self.color
+        )
+
+        body_head_diff = self.for_neck2.b.y - self.body.outerPoints[270].y
+        self.neck1 = Triangle(
+            Point(self.for_neck2.b.x + NECK_LENGTH / 2, self.for_neck2.b.y - body_head_diff),
+            self.for_neck2.b,
+            self.for_neck2.c,
+            self.color,
+        )
+        self.neck2 = Triangle(
+            self.neck1.a,
+            Point(self.for_neck2.c.x + NECK_LENGTH / 2, self.for_neck2.c.y - body_head_diff),
+            self.for_neck2.c,
+            self.color,
+        )
+
+        self.head = Triangle(
+            self.neck1.a,
+            self.neck2.b,
+            Point(self.neck2.b.x + HEAD_WIDTH, self.neck2.b.y),
+            self.color
+        )
+
+        self.nose = Circle(
+            Point(self.head.c.x - NOSE_RADIUS, self.head.c.y - NOSE_RADIUS),
+            NOSE_RADIUS * 2,
+            self.color
+        )
+
+        self.snout = Oval(
+            Point(self.nose.center.x + NOSE_RADIUS * 0.5, self.nose.center.y + NOSE_RADIUS * 0.5),
+            NOSE_RADIUS * 2,
+            NOSE_RADIUS,
+            (255, 192, 203) 
+        )
+        self.snout.rotate(- math.pi/4)
+        
+        # Add nostrils (narine) inside the snout
+        self.nostril = Oval(
+            Point(self.snout.center.x + NOSE_RADIUS * 0.6, self.snout.center.y - NOSE_RADIUS * 0.3),
+            NOSE_RADIUS * 0.6,
+            NOSE_RADIUS * 0.3,
+            (0, 0, 0)
+        )
+        self.nostril.rotate(math.pi/4)
+
+        self.chin = Oval(
+            center=Point(self.head.b.x + HEAD_WIDTH / 2, self.head.b.y),
+            ry=NOSE_RADIUS/2,
+            rx=HEAD_WIDTH/2,
+            color=self.color
+        )
+
+        self.horns_circle = Circle(
+            Point(self.head.a.x + FORHEAD_SIZE, self.head.a.y + FORHEAD_SIZE),
+            FORHEAD_SIZE * 2,
+            self.color
+        )
+
+        self.forhead1 = Triangle(
+            self.horns_circle.outerPoints[0],
+            self.nose.outerPoints[270],
+            self.head.c,
+            self.color
+        )
+
+        self.forhead2 = Triangle(
+            self.head.a,
+            self.head.c,
+            self.horns_circle.outerPoints[0],
+            self.color
+        )
+
+        # Leg positions from body outer points (angles in multiples of 6)
+        leg_positions = [
+            self.body.outerPoints.get(150),
+            self.body.outerPoints.get(30),
+            self.body.outerPoints.get(120),
+            self.body.outerPoints.get(60),
+        ]
+
+        # Building legs from body outer points
         self.thigh_1 = Oval(
-            Point(self.center.x, self.center.y - THIGH_LEG_HEIGHT),
+            Point(leg_positions[0].x, leg_positions[0].y + THIGH_LEG_HEIGHT / 2),
             THIGH_LEG_WIDTH / 2,
             THIGH_LEG_HEIGHT / 2,
             self.color,
@@ -53,10 +171,15 @@ class Cow(Shape):
             CLOG_SIZE,
             (0, 255, 0),
         )
+        self.hip_1 = Circle(
+            Point(leg_positions[0].x, leg_positions[0].y),
+            HIP_RADIUS,
+            self.color,
+        )
     
         # Leg 2
         self.thigh_2 = Oval(
-            Point(self.center.x + leg_spacing, self.center.y - THIGH_LEG_HEIGHT),
+            Point(leg_positions[1].x, leg_positions[1].y + THIGH_LEG_HEIGHT / 2),
             THIGH_LEG_WIDTH / 2,
             THIGH_LEG_HEIGHT / 2,
             self.color,
@@ -86,10 +209,15 @@ class Cow(Shape):
             CLOG_SIZE,
             (0, 255, 0),
         )
+        self.hip_2 = Circle(
+            Point(leg_positions[1].x, leg_positions[1].y),
+            HIP_RADIUS,
+            self.color,
+        )
         
         # Leg 3
         self.thigh_3 = Oval(
-            Point(self.center.x - leg_spacing, self.center.y - THIGH_LEG_HEIGHT),
+            Point(leg_positions[2].x - 8*self.scale_factor, leg_positions[2].y + THIGH_LEG_HEIGHT / 2),
             THIGH_LEG_WIDTH / 2,
             THIGH_LEG_HEIGHT / 2,
             self.color,
@@ -119,10 +247,15 @@ class Cow(Shape):
             CLOG_SIZE,
             (0, 255, 0),
         )
+        self.hip_3 = Circle(
+            Point(leg_positions[2].x - 8*self.scale_factor, leg_positions[2].y),
+            HIP_RADIUS,
+            self.color,
+        )
         
         # Leg 4
         self.thigh_4 = Oval(
-            Point(self.center.x + 2*leg_spacing, self.center.y - THIGH_LEG_HEIGHT),
+            Point(leg_positions[3].x + 8*self.scale_factor, leg_positions[3].y + THIGH_LEG_HEIGHT / 2),
             THIGH_LEG_WIDTH / 2,
             THIGH_LEG_HEIGHT / 2,
             self.color,
@@ -152,12 +285,20 @@ class Cow(Shape):
             CLOG_SIZE,
             (0, 255, 0),
         )
+        self.hip_4 = Circle(
+            Point(leg_positions[3].x + 8*self.scale_factor, leg_positions[3].y),
+            HIP_RADIUS,
+            self.color,
+        )
 
         self.parts = [
-            self.thigh_1, self.calf_1, self.knee_1, self.clog_1,
-            self.thigh_2, self.calf_2, self.knee_2, self.clog_2,
-            self.thigh_3, self.calf_3, self.knee_3, self.clog_3,
-            self.thigh_4, self.calf_4, self.knee_4, self.clog_4
+            self.body,
+            self.for_neck1, self.for_neck2, self.for_neck_round, self.neck1, self.neck2,
+            self.head, self.chin, self.nose, self.horns_circle, self.forhead1, self.forhead2, self.snout, self.nostril,
+            self.hip_1, self.thigh_1, self.calf_1, self.knee_1, self.clog_1,
+            self.hip_2, self.thigh_2, self.calf_2, self.knee_2, self.clog_2,
+            self.hip_3, self.thigh_3, self.calf_3, self.knee_3, self.clog_3,
+            self.hip_4, self.thigh_4, self.calf_4, self.knee_4, self.clog_4
         ]
 
         # Store original clog positions for walking animation
@@ -185,14 +326,14 @@ class Cow(Shape):
         # Different legs have different phase offsets for realistic walking
         legs = [
             (self.thigh_1, self.knee_1, self.calf_1, self.clog_1, self.clog_1_original_y, angle * self.facing_direction),
-            (self.thigh_2, self.knee_2, self.calf_2, self.clog_2, self.clog_2_original_y, (angle + math.pi/2) * self.facing_direction),
-            (self.thigh_3, self.knee_3, self.calf_3, self.clog_3, self.clog_3_original_y, angle * self.facing_direction),
-            (self.thigh_4, self.knee_4, self.calf_4, self.clog_4, self.clog_4_original_y, (angle + math.pi/2) * self.facing_direction)
+            (self.thigh_2, self.knee_2, self.calf_2, self.clog_2, self.clog_2_original_y, (angle + math.pi) * self.facing_direction),
+            (self.thigh_3, self.knee_3, self.calf_3, self.clog_3, self.clog_3_original_y, (angle + math.pi) * self.facing_direction),
+            (self.thigh_4, self.knee_4, self.calf_4, self.clog_4, self.clog_4_original_y, angle * self.facing_direction)
         ]
         
         for thigh, knee, calf, clog, original_y, leg_angle in legs:
             # Calculate new clog position
-            lift_height = 1 / 2 * calf.ry
+            lift_height = 1 / 3 * calf.ry
             lift_factor = math.cos(leg_angle)
             lift_offset = -lift_height * (lift_factor + 1) / 2
 

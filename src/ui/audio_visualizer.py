@@ -197,9 +197,9 @@ class AudioVisualizer:
         self.oval5.draw(self.screen)
 
         # Draw points at 0°, 90°, 180° from circle's outerPoints
-        for angle, color in [(270, (255, 0, 0)), (90, (0, 255, 0)), (180, (0, 0, 255))]:
-            if angle in self.cow_right.thigh_1.outerPoints:
-                point = self.cow_right.thigh_1.outerPoints[angle]
+        for angle, color in [(0, (255, 0, 0)), (180, (0, 255, 0)), (270, (0, 0, 255))]:
+            if angle in self.cow_right.body.outerPoints:
+                point = self.cow_right.body.outerPoints[angle]
                 pygame.draw.circle(self.screen, color, (int(point.x), int(point.y)), 5)
 
         # Translation test: Draw triangle outer points to verify they update correctly
