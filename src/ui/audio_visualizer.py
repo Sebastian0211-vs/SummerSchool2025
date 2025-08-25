@@ -3,7 +3,7 @@ import sys
 import math
 from .shape import Point, Square, Circle, Triangle, Rectangle, Oval
 from .mountains import MountainGenerator
-
+from .icosphere import AudioIcosphereVisualizer
 
 class AudioVisualizer:
     # Singleton: ensure only one instance of AudioVisualizer exists
@@ -33,8 +33,11 @@ class AudioVisualizer:
         self.clock = pygame.time.Clock()
 
         # Mountains
-        self.mountains = MountainGenerator((1000, 1000))
+        self.mountains = MountainGenerator((self.width, self.height))
         self.mountains.generate_all_layers()
+
+        # Sun
+        self.sun = AudioIcosphereVisualizer((self.width, self.height), sensitivity=2.0, rotation_speed=0.5, fps=60, subdivisions=3, base_scale=350)
 
         # Update state
         self.running = True
@@ -202,8 +205,13 @@ class AudioVisualizer:
             # Draw the rotating squares
             self.draw_squares()
 
+           
             # Draw mountains
             self.mountains.draw(self.screen)
+
+            # Draw the sun
+            self.sun.draw(self.screen)
+
 
             # Update the display
             pygame.display.flip()
