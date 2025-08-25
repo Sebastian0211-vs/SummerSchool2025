@@ -267,11 +267,17 @@ def pianoroll_to_midi(bpm: float, pianoroll: list) -> midiutil.MIDIFile():
     return midi
 
 
+#I'm trying to combine ypin with chroma like I said to try and get chords through librosa's chroma functions
+#////////HERE : ////////////////////////////////////////////////////////////////////////////////////////////
+
+
+
+
 def wave_to_midi(
         audio_signal: np.array,
         srate: int = 44100, # was 22050
-        frame_length: int = 1024,   # might change to try to improve accuracy # was 2048
-        hop_length: int = 128,      # might change to try to improve accuracy # was 512
+        frame_length: int = 1024,   # might change to try to improve accuracy # was 2048    # 1024 works well
+        hop_length: int = 128,      # might change to try to improve accuracy # was 512     # 128  works well
         note_min: str = "A2",
         note_max: str = "B7", # was E5
         p_stay_note: float = 0.9,
