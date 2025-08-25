@@ -1,24 +1,17 @@
 import math
 import pygame
-import librosa
 import random
-import numpy as np
-from shape import Point, Point3D, Triangle
+from .shape import *
 
 
 class AudioIcosphereVisualizer:
     """
     Audio-driven icosphere visualizer.
 
-    - Loads audio and computes a short-time Fourier transform (STFT).
     - Builds an icosphere mesh (subdivided icosahedron) represented by 3D vertices and triangle faces.
-    - Maps each vertex to a frequency bin (based on vertex angle) so vertex displacement can be driven by audio.
-    - Plays audio via pygame.mixer and renders a rotating, audio-displaced wireframe icosphere to a pygame surface.
 
     Parameters mirror the original variables:
-    - audio_path: path to an audio file readable by librosa.
     - coordinates: (width, height) of the pygame rendering surface.
-    - n_fft, hop_length: parameters for librosa.stft.
     - sensitivity: multiplier for how strongly the audio amplitude displaces the vertices.
     - rotation_speed: angular speed (radians per second) for the rotation applied each frame.
     - fps: target frames per second for the rendering loop.
@@ -26,16 +19,12 @@ class AudioIcosphereVisualizer:
     - base_scale: base projection scale (bigger values make the sphere appear larger on-screen).
     """
 
-    def __init__(self, audio_path, coordinates=(1920, 1080),
-                 n_fft=2048, hop_length=512,
+    def __init__(self, coordinates=(1920, 1080),
                  sensitivity=2.0, rotation_speed=0.5,
                  fps=60, subdivisions=2, base_scale=250):
 
         # Configuration / parameters
-        self.audio_path = audio_path
         self.coordinates = coordinates
-        self.n_fft = n_fft
-        self.hop_length = hop_length
         self.sensitivity = sensitivity
         self.rotation_speed = rotation_speed
         self.fps = fps
@@ -43,18 +32,14 @@ class AudioIcosphereVisualizer:
         self.base_scale = base_scale
 
         # Mesh and audio-related state (populated in _load_audio_and_mesh)
-        self.tris = None                 # list of triangle indices (tuples of vertex indices)
-        self.verts_unit = None           # list of Point3D unit-length vertices on the sphere
-        self.freq_idx_for_vertex = None  # mapping from vertex index -> spectrogram frequency bin index
-        self.frames_per_second = None    # audio-derived frames per second for spectrogram frames
-        self.S_norm = None               # normalized spectrogram (bins x frames)
-        self.n_frames = None             # number of spectrogram frames
-        self.clock = pygame.time.Clock() # pygame clock for frame timing
-        self.rot_angle = 0.0             # cumulative rotation angle (radians)
-        self.start_ticks = 0             # pygame time when audio started (milliseconds)
+        self.tris = None  # list of triangle indices (tuples of vertex indices)
+        self.verts_unit = None  # list of Point3D unit-length vertices on the sphere
+        self.frames_per_second = None  # audio-derived frames per second for spectrogram frames
+        self.clock = pygame.time.Clock()  # pygame clock for frame timing
+        self.rot_angle = 0.0  # cumulative rotation angle (radians)
+        self.start_ticks = 0  # pygame time when audio started (milliseconds)
 
-        # Immediately load audio and build mesh
-        self._load_audio_and_mesh()
+        self._load_mesh()
 
     # ---------------- helper utilities ----------------
 
@@ -175,107 +160,25 @@ class AudioIcosphereVisualizer:
         py = int(height / 2 - v.y * f)
         return Point(px, py), zp
 
-    def _normalize_spectrogram(self, S_db):
-        """
-        Normalize a dB-scaled spectrogram to the [0, 1] range.
-
-        This is a simple min-max normalization with a tiny epsilon to prevent divide-by-zero.
-        """
-        mn, mx = S_db.min(), S_db.max()
-        return (S_db - mn) / (mx - mn + 1e-9)
-
-    def _load_audio_and_mesh(self):
-        """
-        Load the audio file, compute the magnitude spectrogram (STFT), normalize it,
-        build the mesh (icosphere), and associate each vertex with a frequency bin.
-
-        Also attempts to initialize pygame.mixer and start playback; if playback fails,
-        it still continues so the visualizer can run frame-by-frame based on spectrogram frames.
-        """
-        print("Loading audio...")
-        # librosa.load returns mono audio by default when mono=True
-        y, sr = librosa.load(self.audio_path, sr=None, mono=True)
-
-        # Compute magnitude spectrogram (bins x frames)
-        S = np.abs(librosa.stft(y, n_fft=self.n_fft, hop_length=self.hop_length))
-        # Convert to decibels for perceptual scaling then normalize
-        S_db = librosa.amplitude_to_db(S, ref=np.max)
-        self.S_norm = self._normalize_spectrogram(S_db)
-
-        n_bins, n_frames = self.S_norm.shape
-        self.n_frames = n_frames
-
-        # frames_per_second: how many STFT frames correspond to one second of audio
-        self.frames_per_second = sr / self.hop_length
-        print(f"Loaded: {len(y) / sr:.1f}s, frames={n_frames}, bins={n_bins}")
-
+    def _load_mesh(self):
         # Build the geometric mesh (verts on unit sphere and triangle faces)
         self.verts_unit, self.tris = self._create_icosphere(self.subdivisions)
-
-        # Map each vertex to a frequency bin so we can index the spectrogram per-vertex.
-        # The mapping uses the vertex azimuthal angle (theta) in the X-Z plane: atan2(z, x).
-        # Theta is normalized to [0, 2*pi) and mapped onto [0, n_bins-1].
-        self.freq_idx_for_vertex = []
-        for v in self.verts_unit:
-            theta = math.atan2(v.z, v.x) % (2 * math.pi)
-            freq_idx = int((theta / (2 * math.pi)) * (n_bins - 1))
-            self.freq_idx_for_vertex.append(freq_idx)
-
-        # Try to initialize pygame audio playback. If it fails, continue without playback.
-        try:
-            pygame.mixer.init(frequency=sr)
-            pygame.mixer.music.load(self.audio_path)
-            pygame.mixer.music.play()
-            self.start_ticks = pygame.time.get_ticks()
-        except Exception as e:
-            # If playback cannot be started (missing device, unsupported format, etc.)
-            # we still set start_ticks so frame timing can proceed based on local time.
-            print("Audio playback failed:", e)
-            self.start_ticks = pygame.time.get_ticks()
 
     # ---------------- main render routine ----------------
 
     def draw(self, screen):
-        """
-        Render a single frame of the visualizer into the provided pygame Surface 'screen'.
 
-        Returns:
-            True if rendering should continue (audio not finished), False to indicate
-            the track/spectrogram frames are exhausted and visualization should stop.
-
-        Steps:
-            1. Advance pygame clock and compute elapsed time in seconds.
-            2. Compute which spectrogram frame corresponds to the current time.
-            3. Read the column of normalized magnitudes for that frame.
-            4. Compute a global amplitude (mean of that column) and use it to displace sphere vertices.
-               A small random factor is multiplied per-vertex to add organic variation.
-            5. Rotate displaced vertices about the Y axis (so the sphere appears to spin).
-            6. Depth-sort triangles by average Z so wireframe drawing correctly overlays nearer triangles last.
-            7. Project rotated vertices into screen coordinates and draw triangle outlines (wireframe).
-        """
         # dt: time elapsed since last frame in seconds (used to advance rotation)
         dt = self.clock.tick(self.fps) / 1000.0
 
-        # elapsed_ms since audio start; compute corresponding spectrogram frame index
-        elapsed_ms = pygame.time.get_ticks() - self.start_ticks
-        t_sec = elapsed_ms / 1000.0
-        frame_idx = int(t_sec * self.frames_per_second)
-
-        # If we've passed the last available frame, signal that visualization can stop
-        if frame_idx >= self.n_frames:
-            return False  # track finished / no more spectrogram frames
-
-        # Column of normalized spectral magnitudes for the current frame (bins,)
-        col = self.S_norm[:, frame_idx]
-
-        # Use a global amplitude (mean across frequency bins) to determine displacement magnitude.
-        # Each vertex gets a tiny random multiplier to avoid perfectly uniform displacement.
-        global_amp = np.mean(col)
         displaced = []
         for i, v in enumerate(self.verts_unit):
-            # Per-vertex random jitter to create a more organic surface
-            random_factor = random.uniform(0.8, 1.2)
-            displacement = 1.0 + self.sensitivity * global_amp * random_factor
+
+            # TODO Part to make animation. Sound data needs to be extracted
+            #random_factor = random.uniform(0.8, 1.2)
+            #displacement = 1.0 + self.sensitivity * random_factor
+
+            displacement = 1.0
 
             # Scale the unit vertex by the computed displacement (pushing it in/out along its normal)
             displaced.append(Point3D(
