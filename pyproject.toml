@@ -12,6 +12,7 @@ dependencies = [
     "mkdocstrings[python]>=0.30.0",
     "pygame>=2.6.1",
     # DO NOT list uv here – it's an installer, installed in CI separately
+    "sympy>=1.14.0",
 ]
 
 [dependency-groups]
