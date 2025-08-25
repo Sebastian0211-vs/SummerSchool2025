@@ -36,7 +36,6 @@ class Point:
 
 
 class TrianglePrimitive:
-class TrianglePrimitive:
     def __init__(self, a: Point, b: Point, c: Point):
         self.a, self.b, self.c = a, b, c
 
@@ -49,10 +48,8 @@ class TrianglePrimitive:
 
     def __repr__(self):
         return f"TrianglePrimitive: a:({self.a}), b:({self.b}), c:({self.c})"
-        return f"TrianglePrimitive: a:({self.a}), b:({self.b}), c:({self.c})"
 
 
-# Shapes are exclusively made of triangle primitives
 # Shapes are exclusively made of triangle primitives
 class Shape:
     def __init__(self, center: Point, color=(255, 255, 255)):
@@ -60,12 +57,10 @@ class Shape:
         self.color = color  # RGB tuple
         self.triangles = []
         self.original_coords = []  # Store original coordinates
-        self.original_coords = []  # Store original coordinates
 
         # Rotation uses
         self.current_rotation = 0.0
 
-    def get_triangles(self) -> list[TrianglePrimitive]:
     def get_triangles(self) -> list[TrianglePrimitive]:
         return self.triangles
 
@@ -75,16 +70,7 @@ class Shape:
             origin = self.center
 
         self.current_rotation = angle % (math.pi * 2)
-        self.current_rotation = angle % (math.pi * 2)
 
-        # Update TrianglePrimitive's points
-        for i, (orig_a, orig_b, orig_c) in enumerate(self.original_coords):
-            triangle = self.triangles[i]
-
-            # Reset existing Point
-            triangle.a.x, triangle.a.y = orig_a
-            triangle.b.x, triangle.b.y = orig_b
-            triangle.c.x, triangle.c.y = orig_c
         # Update TrianglePrimitive's points
         for i, (orig_a, orig_b, orig_c) in enumerate(self.original_coords):
             triangle = self.triangles[i]
@@ -95,9 +81,6 @@ class Shape:
             triangle.c.x, triangle.c.y = orig_c
 
             # Apply rotation
-            triangle.a.rotate(angle, origin)
-            triangle.b.rotate(angle, origin)
-            triangle.c.rotate(angle, origin)
             triangle.a.rotate(angle, origin)
             triangle.b.rotate(angle, origin)
             triangle.c.rotate(angle, origin)
@@ -124,6 +107,7 @@ class Shape:
             self.rotate(self.current_rotation)
             return True
         return False
+    
     def translate(self, dx: float, dy: float):
         """Translate the shape by moving all triangles and updating center"""
         # Update center
@@ -170,14 +154,8 @@ class Square(Shape):
         self.triangles = [
             TrianglePrimitive(top_left, bot_left, bot_right),
             TrianglePrimitive(top_right, top_left, bot_right),
-            TrianglePrimitive(top_left, bot_left, bot_right),
-            TrianglePrimitive(top_right, top_left, bot_right),
         ]
 
-        # Store original coordinates
-        self.original_coords = [
-            ((t.a.x, t.a.y), (t.b.x, t.b.y), (t.c.x, t.c.y)) for t in self.triangles
-        ]
         # Store original coordinates
         self.original_coords = [
             ((t.a.x, t.a.y), (t.b.x, t.b.y), (t.c.x, t.c.y)) for t in self.triangles
@@ -188,12 +166,7 @@ class Square(Shape):
         if self.size != new_size:
             self.size = new_size
             self._create_triangles()
-        if self.size != new_size:
-            self.size = new_size
-            self._create_triangles()
 
-            # Reapply rotation
-            self._apply_current_rotation()
             # Reapply rotation
             self._apply_current_rotation()
 
@@ -216,8 +189,6 @@ class Circle(Shape):
             self.triangles.append(
                 TrianglePrimitive(
                     Point(self.center.x, self.center.y),
-                TrianglePrimitive(
-                    Point(self.center.x, self.center.y),
                     Point(
                         self.center.x + self.radius * math.cos(p1_angle),
                         self.center.y + self.radius * math.sin(p1_angle),
@@ -229,9 +200,6 @@ class Circle(Shape):
                 )
             )
 
-        self.original_coords = [
-            ((t.a.x, t.a.y), (t.b.x, t.b.y), (t.c.x, t.c.y)) for t in self.triangles
-        ]
         self.original_coords = [
             ((t.a.x, t.a.y), (t.b.x, t.b.y), (t.c.x, t.c.y)) for t in self.triangles
         ]
@@ -368,8 +336,8 @@ class Rectangle(Shape):
     def set_height(self, new_height: float):
         """Update the rectangle's height and recreate triangles"""
         self.height = new_height
-        if self.radius != new_radius:
-            self.radius = new_radius
+        if self.radius != new_height:
+            self.radius = new_height
             self._create_triangles()
 
             # Reapply rotation
@@ -500,7 +468,5 @@ class Rectangle(Shape):
         self.height = new_height
         self._create_triangles()
 
-        # Reapply rotation
-        self._apply_current_rotation()
         # Reapply rotation
         self._apply_current_rotation()

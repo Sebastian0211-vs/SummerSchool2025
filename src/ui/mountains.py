@@ -1,7 +1,7 @@
 import math
 import random
 
-from shape import Point, Triangle
+from .shape import *
 
 # Colors for different layers (from far to near)
 MOUNTAIN_COLORS = [
