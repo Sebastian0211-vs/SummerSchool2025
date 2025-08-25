@@ -3,6 +3,7 @@ import math
 import time
 
 from sound_to_midi.monophonic import wave_to_midi
+from sound_to_midi.monophonic import wave_to_midi_poly
 from sound_to_midi.monophonic import midiutil
 
 '''
@@ -40,7 +41,7 @@ fileout = 'src/audio/res/midiOutputs/testPolyphony.mid'
 
 timeStart = time.time()
 
-midi = wave_to_midi(y, sr)
+midi = wave_to_midi_poly(y, sr)
 with open(fileout, 'wb') as f:
     midi.writeFile(f)
 
