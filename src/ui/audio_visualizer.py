@@ -2,6 +2,7 @@ import pygame
 import sys
 import math
 from .shape import Point, Square, Circle, Triangle, Rectangle, Oval
+from .mountains import MountainGenerator
 
 
 class AudioVisualizer:
@@ -30,6 +31,10 @@ class AudioVisualizer:
 
         # Clock
         self.clock = pygame.time.Clock()
+
+        # Mountains
+        self.mountains = MountainGenerator((1000, 1000))
+        self.mountains.generate_all_layers()
 
         # Update state
         self.running = True
@@ -196,6 +201,9 @@ class AudioVisualizer:
             self.screen.fill((0, 0, 0))
             # Draw the rotating squares
             self.draw_squares()
+
+            # Draw mountains
+            self.mountains.draw(self.screen)
 
             # Update the display
             pygame.display.flip()

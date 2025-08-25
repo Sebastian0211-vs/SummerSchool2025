@@ -5,6 +5,8 @@ from src.ui.audio_visualizer import AudioVisualizer
 from src.audio.AudioSplitter_v1 import AudioSplit
 
 
+from src.ui.audio_visualizer import AudioVisualizer
+
 def main():
 
     visualizer = AudioVisualizer()
