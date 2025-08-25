@@ -3,7 +3,7 @@ import pygame
 import librosa
 import random
 import numpy as np
-from shape import Point, Triangle
+from shape import Point, Point3D, Triangle
 
 
 class AudioIcosphereVisualizer:
@@ -321,17 +321,7 @@ class AudioIcosphereVisualizer:
 
             # Create Triangle object (provided by shape.Triangle) and draw its outline.
             # Points are converted to tuples for pygame.draw.polygon.
-            triangle = Triangle(pa, pb, pc, color=color)
-            points = [(p.x, p.y) for p in [triangle.a, triangle.b, triangle.c]]
-            pygame.draw.polygon(screen, color, points, 1)
+            triangle = Triangle(pa, pb, pc, color)
+            triangle.draw(screen, 1)
 
         return True
-
-
-# Simple Point3D container for 3D coordinates and helpful repr for debugging
-class Point3D:
-    def __init__(self, x, y, z):
-        self.x, self.y, self.z = x, y, z
-
-    def __repr__(self):
-        return f"(x:{self.x}, y:{self.y}, z:{self.z})"
