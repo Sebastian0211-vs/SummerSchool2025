@@ -1,6 +1,5 @@
 import math
 import random
-import pygame
 
 from shape import Point, Triangle
 
@@ -8,7 +7,7 @@ from shape import Point, Triangle
 MOUNTAIN_COLORS = [
     (180, 200, 220),  # farthest layer — very light
     (140, 170, 200),  # middle-far layer — light
-    (106, 137, 167)   # nearest layer — base color
+    (106, 137, 167)  # nearest layer — base color
 ]
 TRIANGLE_OUTLINE = (60, 60, 60)
 
@@ -163,19 +162,23 @@ class MountainLayer:
                                 # Create Triangle object instead of storing raw vertices
                                 triangle_obj = Triangle(vertices[0], vertices[1], vertices[2], color=color)
                                 self.triangles.append(triangle_obj)
+                                if self.layer_index == 2:
+                                    triangle_outline_obj = Triangle(vertices[0], vertices[1], vertices[2], color=TRIANGLE_OUTLINE)
+                                    self.triangles.append(triangle_outline_obj)
 
         # NOTE: This approach ensures triangles that cross the outline are trimmed to the mountain's fill,
         # producing a mosaic-like mountain surface.
 
     def draw(self, screen):
-        for triangle in self.triangles:
-            triangle.draw(screen)
-            if self.layer_index == 2:  # Only draw outline for nearest layer
-                # Get the points from the triangle's TrianglePrimitive
-                primitives = triangle.get_triangles()
-                if primitives:
-                    points = [(p.x, p.y) for p in primitives[0].get_points()]
-                    pygame.draw.polygon(screen, TRIANGLE_OUTLINE, points, 1)
+        if self.layer_index == 2:
+            for i, triangle in enumerate(self.triangles):
+                if i % 2 == 0:
+                    triangle.draw(screen)
+                else:
+                    triangle.draw(screen, 1)
+        else:
+            for triangle in self.triangles:
+                triangle.draw(screen)
 
 
 class MountainGenerator:
@@ -189,7 +192,7 @@ class MountainGenerator:
         self.layers = [
             MountainLayer(self.width, self.height, 0, self.base_horizon_y),  # farthest
             MountainLayer(self.width, self.height, 1, self.base_horizon_y),  # middle
-            MountainLayer(self.width, self.height, 2, self.base_horizon_y)   # nearest
+            MountainLayer(self.width, self.height, 2, self.base_horizon_y)  # nearest
         ]
 
         # NOTE: If you want interactive control over horizon, modify base_horizon_y
@@ -207,4 +210,3 @@ class MountainGenerator:
         # Draw layers from farthest to nearest so nearer ones appear on top
         for layer in self.layers:
             layer.draw(screen)
-            
