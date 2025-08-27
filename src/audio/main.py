@@ -1,8 +1,8 @@
 import librosa
 import time
-from sound_to_midi.monophonic import wave_to_midi_poly
+from soundToMidiLocalLibrairy.sound_to_midi.monophonic import wave_to_midi_poly
 
-filename =  'src/audio/res/samples/SebPPp2.wav'
+filename =  'src/audio/res/samples/premade/PinkPanther_Both.mp3'
 fileout =   'src/audio/res/midiOutputs/testPolyphony.mid'
 
 y, sr = librosa.load(filename, sr=None)
