@@ -5,7 +5,7 @@ from .shape import Point, Square, Circle, Triangle, Rectangle, Oval
 from .cow import Cow
 from .mountains import MountainGenerator
 from .icosphere import AudioIcosphereVisualizer
-
+from .grass import GrassGenerator
 
 class AudioVisualizer:
     # Singleton: ensure only one instance of AudioVisualizer exists
@@ -47,6 +47,10 @@ class AudioVisualizer:
             subdivisions=3,
             base_scale=350,
         )
+
+        # Grass
+        self.grass = GrassGenerator((self.width, self.height), 1000)
+        self.grass.generate()
 
         # Update state
         self.running = True
@@ -287,11 +291,14 @@ class AudioVisualizer:
             # Draw the rotating squares
             self.draw_squares()
 
-            # Draw mountains
-            self.mountains.draw(self.screen)
-
-            # Draw the sun
+             # Draw the sun
             self.sun.draw(self.screen)
+
+             # Draw grass
+            self.grass.draw(self.screen)
+
+            # Draw mountains
+            self.mountains.draw(self.screen)        
 
             # Update the display
             pygame.display.flip()
