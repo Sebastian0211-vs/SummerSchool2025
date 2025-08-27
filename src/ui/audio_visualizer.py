@@ -8,6 +8,7 @@ from .icosphere import AudioIcosphereVisualizer
 from .grass import GrassGenerator
 from .soil import Soil
 
+
 class AudioVisualizer:
     # Singleton: ensure only one instance of AudioVisualizer exists
     _instance = None
@@ -131,11 +132,15 @@ class AudioVisualizer:
         self.triangle_home = Point(self.triangle3.center.x, self.triangle3.center.y)
 
         # Add two cows - one facing right, one facing left
-        self.cow_right = Cow(Point(self.width // 2 - 300, self.height // 2 - 300), facing_direction=1)
-        self.cow_left = Cow(Point(self.width // 2 + 300, self.height // 2 - 300), facing_direction=-1)
-        
+        self.cow_right = Cow(
+            Point(self.width // 2 - 300, self.height // 2 - 300), facing_direction=1
+        )
+        self.cow_left = Cow(
+            Point(self.width // 2 + 300, self.height // 2 - 300), facing_direction=-1
+        )
+
         # Cow animation variables - restrict to 2/3 of screen
-        screen_range = self.height * 2/3  # 2/3 of screen height
+        screen_range = self.height * 2 / 3  # 2/3 of screen height
         start_y = self.height / 6  # Start at 1/6 from top
         self.cow_min_y = start_y
         self.cow_max_y = start_y + screen_range
@@ -198,10 +203,8 @@ class AudioVisualizer:
         # Translation animations
         self.animate_translations(current_time)
 
-
-
         # Draw points at 0°, 90°, 180° from circle's outerPoints
-        #for angle, color in [(0, (255, 0, 0)), (180, (0, 255, 0)), (270, (0, 0, 255))]:
+        # for angle, color in [(0, (255, 0, 0)), (180, (0, 255, 0)), (270, (0, 0, 255))]:
         #    if angle in self.cow_right.body.outerPoints:
         #        point = self.cow_right.body.outerPoints[angle]
         #        pygame.draw.circle(self.screen, color, (int(point.x), int(point.y)), 5)
@@ -209,17 +212,17 @@ class AudioVisualizer:
         # Translation test: Draw triangle outer points to verify they update correctly
         triangle_points = ["a", "b", "c"]
         triangle_colors = [
-            (255, 255, 0),
-            (255, 0, 255),
-            (0, 255, 255),
+            (255, 0, 0),
+            (0, 255, 0),
+            (0, 0, 255),
         ]  # Yellow, Magenta, Cyan
-        #for point_key, color in zip(triangle_points, triangle_colors):
-        #    if point_key in self.triangle3.outerPoints:
-        #        point = self.triangle3.outerPoints[point_key]
-        #        pygame.draw.circle(self.screen, color, (int(point.x), int(point.y)), 8)
+        for point_key, color in zip(triangle_points, triangle_colors):
+            if point_key in self.triangle3.outerPoints:
+                point = self.triangle3.outerPoints[point_key]
+                pygame.draw.circle(self.screen, color, (int(point.x), int(point.y)), 8)
 
         # Draw translation demo shape
-        #self.orbital_circle.draw(self.screen)
+        # self.orbital_circle.draw(self.screen)
 
         # Draw soil
         self.soil.draw(self.screen)
@@ -228,12 +231,13 @@ class AudioVisualizer:
         self.grass.draw(self.screen)
 
         # Draw mountains
-        self.mountains.draw(self.screen)        
-
+        self.mountains.draw(self.screen)
 
         # Animate and draw both cows
         self.animate_cow(current_time, self.cow_right)
-        self.animate_cow(current_time, self.cow_left, phase_offset=math.pi)  # Out of phase
+        self.animate_cow(
+            current_time, self.cow_left, phase_offset=math.pi
+        )  # Out of phase
         self.cow_right.draw(self.screen)
         self.cow_left.draw(self.screen)
 
@@ -271,22 +275,22 @@ class AudioVisualizer:
 
     def animate_cow(self, time, cow, phase_offset=0):
         """Handle cow animation with vertical movement and scale factor based on position"""
-        
+
         # Calculate vertical position (oscillates between min and max Y)
         y_progress = (math.sin(time * self.cow_speed + phase_offset) + 1) / 2  # 0 to 1
         desired_y = self.cow_min_y + y_progress * (self.cow_max_y - self.cow_min_y)
-        
+
         # Calculate translation needed
         dy = desired_y - cow.center.y
-        
+
         # Apply translation if needed
         if abs(dy) > 0.1:
             cow.translate(0, dy)
-        
+
         # Calculate scale factor based on Y position (0.6 at top, 1.5 at bottom)
         scale_factor = 0.6 + (1.5 - 0.6) * y_progress
         cow.set_scale_factor(scale_factor)
-        
+
         # Walking animation
         walk_angle = time * 0.005
         cow.walk(walk_angle)
@@ -300,7 +304,7 @@ class AudioVisualizer:
                     self.running = False
 
             # Clear screen with black background
-            self.screen.fill((0, 0, 0))
+            self.screen.fill((255, 255, 255))
             # Draw the rotating squares
             self.draw_squares()
 
