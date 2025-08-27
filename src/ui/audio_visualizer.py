@@ -6,6 +6,7 @@ from .cow import Cow
 from .mountains import MountainGenerator
 from .icosphere import AudioIcosphereVisualizer
 from .grass import GrassGenerator
+from .soil import Soil
 
 class AudioVisualizer:
     # Singleton: ensure only one instance of AudioVisualizer exists
@@ -49,8 +50,12 @@ class AudioVisualizer:
         )
 
         # Grass
-        self.grass = GrassGenerator((self.width, self.height), 1000)
+        self.grass = GrassGenerator((self.width, self.height), 10000)
         self.grass.generate()
+
+        # Soil
+        self.soil = Soil((self.width, self.height), 20, 0.02)
+        self.soil.generate()
 
         # Update state
         self.running = True
@@ -193,18 +198,13 @@ class AudioVisualizer:
         # Translation animations
         self.animate_translations(current_time)
 
-        # Draw all shapes using their draw method
-        self.square1.draw(self.screen)
-        self.circle2.draw(self.screen)
-        self.triangle3.draw(self.screen)
-        self.rectangle4.draw(self.screen)
-        self.oval5.draw(self.screen)
+
 
         # Draw points at 0°, 90°, 180° from circle's outerPoints
-        for angle, color in [(0, (255, 0, 0)), (180, (0, 255, 0)), (270, (0, 0, 255))]:
-            if angle in self.cow_right.body.outerPoints:
-                point = self.cow_right.body.outerPoints[angle]
-                pygame.draw.circle(self.screen, color, (int(point.x), int(point.y)), 5)
+        #for angle, color in [(0, (255, 0, 0)), (180, (0, 255, 0)), (270, (0, 0, 255))]:
+        #    if angle in self.cow_right.body.outerPoints:
+        #        point = self.cow_right.body.outerPoints[angle]
+        #        pygame.draw.circle(self.screen, color, (int(point.x), int(point.y)), 5)
 
         # Translation test: Draw triangle outer points to verify they update correctly
         triangle_points = ["a", "b", "c"]
@@ -213,19 +213,32 @@ class AudioVisualizer:
             (255, 0, 255),
             (0, 255, 255),
         ]  # Yellow, Magenta, Cyan
-        for point_key, color in zip(triangle_points, triangle_colors):
-            if point_key in self.triangle3.outerPoints:
-                point = self.triangle3.outerPoints[point_key]
-                pygame.draw.circle(self.screen, color, (int(point.x), int(point.y)), 8)
+        #for point_key, color in zip(triangle_points, triangle_colors):
+        #    if point_key in self.triangle3.outerPoints:
+        #        point = self.triangle3.outerPoints[point_key]
+        #        pygame.draw.circle(self.screen, color, (int(point.x), int(point.y)), 8)
 
         # Draw translation demo shape
-        self.orbital_circle.draw(self.screen)
+        #self.orbital_circle.draw(self.screen)
+
+        # Draw soil
+        self.soil.draw(self.screen)
+
+        # Draw grass
+        self.grass.draw(self.screen)
+
+        # Draw mountains
+        self.mountains.draw(self.screen)        
+
 
         # Animate and draw both cows
         self.animate_cow(current_time, self.cow_right)
         self.animate_cow(current_time, self.cow_left, phase_offset=math.pi)  # Out of phase
         self.cow_right.draw(self.screen)
         self.cow_left.draw(self.screen)
+
+        # Draw the sun
+        self.sun.draw(self.screen)
 
     def animate_translations(self, time):
         """Handle translation animation for the orbital circle"""
@@ -290,15 +303,6 @@ class AudioVisualizer:
             self.screen.fill((0, 0, 0))
             # Draw the rotating squares
             self.draw_squares()
-
-             # Draw the sun
-            self.sun.draw(self.screen)
-
-             # Draw grass
-            self.grass.draw(self.screen)
-
-            # Draw mountains
-            self.mountains.draw(self.screen)        
 
             # Update the display
             pygame.display.flip()
