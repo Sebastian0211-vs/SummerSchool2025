@@ -1,6 +1,7 @@
 import math
 import pygame
 
+
 class Point:
     def __init__(self, x: float, y: float):
         self.x, self.y = x, y
@@ -120,6 +121,32 @@ class Shape:
             self.rotate(self.current_rotation)
             return True
         return False
+
+    def symmetry(self, x_axis: float):
+        """Flip all points horizontally around the specified X coordinate"""
+        # Collect all unique points to avoid double-flipping shared points
+        unique_points = set()
+        for triangle in self.triangles:
+            unique_points.add(triangle.a)
+            unique_points.add(triangle.b)
+            unique_points.add(triangle.c)
+
+        # Apply symmetry transformation: new_x = 2 * x_axis - old_x
+        for point in unique_points:
+            point.x = 2 * x_axis - point.x
+
+        # Update center
+        self.center.x = 2 * x_axis - self.center.x
+
+        # Update original coordinates
+        self.original_coords = [
+            (
+                (2 * x_axis - orig_a[0], orig_a[1]),
+                (2 * x_axis - orig_b[0], orig_b[1]),
+                (2 * x_axis - orig_c[0], orig_c[1]),
+            )
+            for (orig_a, orig_b, orig_c) in self.original_coords
+        ]
 
     def draw(self, screen, width=0):
         """Draw all the shape's triangles"""
