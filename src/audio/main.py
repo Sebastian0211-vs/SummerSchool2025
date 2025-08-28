@@ -1,8 +1,8 @@
 import librosa
 import time
-from soundToMidiLocalLibrairy.sound_to_midi.monophonic import wave_to_midi_poly
+from soundToMidiLocalLibrary.sound_to_midi.main import wave_to_midi_poly
 
-filename =  'src/audio/res/samples/premade/PinkPanther_Both.mp3'
+filename =  'src/audio/res/samples/premade/PinkPanther_Piano_Only.mp3'
 fileout =   'src/audio/res/midiOutputs/testPolyphony.mid'
 
 y, sr = librosa.load(filename, sr=None)
@@ -17,4 +17,4 @@ with open(fileout, 'wb') as f:
     midi.writeFile(f)
 timeEnd = time.time() - timeStart
 
-print("/////////////FINISHED IN ", timeEnd, "SECONDS///////////////////")
+print("/////////////FINISHED IN ", timeEnd/60, "MINUTES///////////////////")

@@ -362,10 +362,10 @@ def prior_probabilities_hybrid(
         frame_length: int = 2048,
         hop_length: int = 512,
         pitch_acc: float = 0.9,
-        voiced_acc: float = 0.9,
-        onset_acc: float = 0.9,
+        voiced_acc: float = 0.9,    # was 0.9
+        onset_acc: float = 0.2,     # was 0.9
         spread: float = 0.2,
-        alpha: float = 0.7) -> np.array:
+        alpha: float = 0.7) -> np.array: # was 0.7
     """
     Estimate prior probabilities by combining pyin (monophonic) and CQT (polyphonic).
     """
@@ -411,6 +411,7 @@ def prior_probabilities_hybrid(
         fmin=librosa.note_to_hz(note_min),
         n_bins=n_notes,
         bins_per_octave=12)
+    
     cqt_mag = np.abs(cqt)
     priors_cqt = cqt_mag / (np.sum(cqt_mag, axis=0, keepdims=True) + 1e-6)
 
