@@ -1,20 +1,14 @@
-import librosa
 import time
-from soundToMidiLocalLibrary.sound_to_midi.main import wave_to_midi_poly
+from soundToMidiLocalLibrary.sound_to_midi.mainOptimised import proceed
 
 filename =  'src/audio/res/samples/premade/PinkPanther_Piano_Only.mp3'
-fileout =   'src/audio/res/midiOutputs/testPolyphony.mid'
+fileout  =  'src/audio/res/midiOutputs/testClaudePolyphony.mid'
 
-y, sr = librosa.load(filename, sr=None)
-'''
-Using git's sound_to_midi that utilizes librosa
-So attempting to improve it in order to have a
-more accurate transposer.
-'''
-timeStart = time.time()
-midi = wave_to_midi_poly(y, sr)
+PPp      =  'src/audio/res/samples/premade/PinkPanther_Piano_Only.mp3'
+PPt      =  'src/audio/res/samples/premade/PinkPanther_Trumpet_Only.mp3'
+
+midi = proceed(PPt, False)
 with open(fileout, 'wb') as f:
     midi.writeFile(f)
-timeEnd = time.time() - timeStart
 
-print("/////////////FINISHED IN ", timeEnd/60, "MINUTES///////////////////")
+print("FINISHED")
