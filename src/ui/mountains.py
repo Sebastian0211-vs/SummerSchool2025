@@ -26,11 +26,16 @@ class MountainLayer:
         # Triangle size decreases for farther layers
         self.triangle_size = 20 - layer_index * 2
 
+        # Optimization caches
+        self._mountain_y_cache = {}  # Cache interpolated mountain heights
+        self._cached_colors = []  # Pre-generate color variations
+
         # NOTE: triangle_size must stay > 0
 
     def generate_mountain_outline(self):
         """Generate a zig-zag mountain outline (polyline)."""
         self.mountain_points = []
+        self._mountain_y_cache.clear()  # Clear cache when regenerating
 
         # Start at the left edge at the horizon level
         self.mountain_points.append(Point(0, self.horizon_y))
@@ -89,17 +94,28 @@ class MountainLayer:
         return False
 
     def get_mountain_y_at_x(self, x):
-        """Return the outline y coordinate at a given x (linear interpolation)."""
+        """Return the outline y coordinate at a given x (linear interpolation) with caching."""
+        # Check cache first
+        x_key = int(x)  # Use integer key for cache
+        if x_key in self._mountain_y_cache:
+            return self._mountain_y_cache[x_key]
+            
+        # Calculate and cache the result
         for i in range(len(self.mountain_points) - 1):
             x1, y1 = self.mountain_points[i].x, self.mountain_points[i].y
             x2, y2 = self.mountain_points[i + 1].x, self.mountain_points[i + 1].y
 
             if x1 <= x <= x2:
                 if x2 - x1 != 0:
-                    return y1 + (y2 - y1) * (x - x1) / (x2 - x1)
+                    y_result = y1 + (y2 - y1) * (x - x1) / (x2 - x1)
                 else:
-                    return y1
+                    y_result = y1
+                    
+                self._mountain_y_cache[x_key] = y_result
+                return y_result
+                
         # If x is outside known points, return horizon as fallback
+        self._mountain_y_cache[x_key] = self.horizon_y
         return self.horizon_y
 
     def generate_triangles(self):
@@ -110,6 +126,9 @@ class MountainLayer:
         int_triangle_height = int(round(triangle_height))
         if int_triangle_height <= 0:
             int_triangle_height = 1  # safety clamp
+            
+        # Pre-generate color variations for better performance
+        self._pregenerate_colors()
 
         # NOTE: we generate a triangular grid (two triangles per cell: up and down).
         # We step y by the triangle height and x by triangle_size, offsetting every other row.
@@ -153,12 +172,9 @@ class MountainLayer:
                             area = abs((p1.x - p0.x) * (p2.y - p0.y) -
                                        (p2.x - p0.x) * (p1.y - p0.y))
                             if area > 1:
-                                color_variation = random.randint(-15, 15)
-                                color = (
-                                    max(0, min(255, self.color[0] + color_variation)),
-                                    max(0, min(255, self.color[1] + color_variation)),
-                                    max(0, min(255, self.color[2] + color_variation))
-                                )
+                                # Use pre-generated color variation
+                                color = random.choice(self._cached_colors)
+                                
                                 # Create Triangle object instead of storing raw vertices
                                 triangle_obj = Triangle(vertices[0], vertices[1], vertices[2], color=color)
                                 self.triangles.append(triangle_obj)
@@ -168,6 +184,18 @@ class MountainLayer:
 
         # NOTE: This approach ensures triangles that cross the outline are trimmed to the mountain's fill,
         # producing a mosaic-like mountain surface.
+        
+    def _pregenerate_colors(self, num_colors=50):
+        """Pre-generate color variations to avoid repeated calculations"""
+        self._cached_colors = []
+        for _ in range(num_colors):
+            color_variation = random.randint(-15, 15)
+            color = (
+                max(0, min(255, self.color[0] + color_variation)),
+                max(0, min(255, self.color[1] + color_variation)),
+                max(0, min(255, self.color[2] + color_variation))
+            )
+            self._cached_colors.append(color)
 
     def draw(self, screen):
         if self.layer_index == 2:

@@ -1,8 +1,8 @@
 import random
 from .shape import *
 
-GROUND_COLORS = [(92, 64, 51), (139, 90, 60), (176, 123, 75)]
-STONE_COLOR = (158, 148, 135)
+GROUND_COLORS = [(78, 65, 42), (115, 85, 55), (145, 105, 65)]  # Rich earth tones
+STONE_COLOR = (125, 115, 95)
 
 
 class Soil:
@@ -24,7 +24,7 @@ class Soil:
         for y in range(top_y, base_y + self.cell_size, self.cell_size):
             row = []
             for x in range(0, self.width + self.cell_size, self.cell_size):
-            
+
                 jitter_x = random.randint(-4, 4)
                 jitter_y = random.randint(-4, 4)
                 row.append(Point(x + jitter_x, y + jitter_y))
@@ -47,7 +47,7 @@ class Soil:
                 else:
                     color = random.choice(GROUND_COLORS)
 
-                # two triangles to make a square 
+                # two triangles to make a square
                 tri1 = Triangle(p1, p2, p3, color=color)
                 tri2 = Triangle(p2, p4, p3, color=color)
 

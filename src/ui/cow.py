@@ -10,6 +10,14 @@ class Cow(Shape):
         super().__init__(center, color)
         self.scale_factor = scale_factor
         self.facing_direction = facing_direction
+
+        # Cache for optimization
+        self._cached_parts = None
+        self._cached_scale_factor = None
+        self._cached_facing_direction = None
+        self._pi = math.pi
+        self._half_pi = math.pi / 2
+
         self._create_cow()
 
     def _create_cow(self):
@@ -442,59 +450,101 @@ class Cow(Shape):
         self.clog_3_original_y = self.clog_3.center.y
         self.clog_4_original_y = self.clog_4.center.y
 
+        # Pre-cache frequently accessed points for walk animation optimization
+        self._cache_walk_points()
+
     def set_scale_factor(self, new_scale_factor):
         """Update the scale factor and recreate the cow with new dimensions"""
+        if self.scale_factor == new_scale_factor:
+            return  # No change needed
+
         self.scale_factor = new_scale_factor
+        self._cache_reinstanciation()
         self._create_cow()
 
     def set_facing_direction(self, new_direction):
         """Update the facing direction (1 for right, -1 for left)"""
+        if self.facing_direction == new_direction:
+            return
+
         self.facing_direction = new_direction
+        self._cache_reinstanciation()
         self._create_cow()
+
+    def _cache_reinstanciation(self):
+        """Resintanciation parts when cow needs to be recreated"""
+        self._cached_parts = None
+        self._cached_scale_factor = None
+        self._cached_facing_direction = None
+
+    def _cache_walk_points(self):
+        # Cache leg component references for faster access
+        self._leg_components = [
+            {
+                "thigh": self.thigh_1,
+                "knee": self.knee_1,
+                "calf": self.calf_1,
+                "clog": self.clog_1,
+                "original_y": self.clog_1_original_y,
+                "calf_point_90": self.calf_1.outerPoints.get(90),
+                "thigh_point_270": self.thigh_1.outerPoints.get(270),
+            },
+            {
+                "thigh": self.thigh_2,
+                "knee": self.knee_2,
+                "calf": self.calf_2,
+                "clog": self.clog_2,
+                "original_y": self.clog_2_original_y,
+                "calf_point_90": self.calf_2.outerPoints.get(90),
+                "thigh_point_270": self.thigh_2.outerPoints.get(270),
+            },
+            {
+                "thigh": self.thigh_3,
+                "knee": self.knee_3,
+                "calf": self.calf_3,
+                "clog": self.clog_3,
+                "original_y": self.clog_3_original_y,
+                "calf_point_90": self.calf_3.outerPoints.get(90),
+                "thigh_point_270": self.thigh_3.outerPoints.get(270),
+            },
+            {
+                "thigh": self.thigh_4,
+                "knee": self.knee_4,
+                "calf": self.calf_4,
+                "clog": self.clog_4,
+                "original_y": self.clog_4_original_y,
+                "calf_point_90": self.calf_4.outerPoints.get(90),
+                "thigh_point_270": self.thigh_4.outerPoints.get(270),
+            },
+        ]
 
     def draw(self, screen):
         for part in self.parts:
             part.draw(screen)
 
     def walk(self, angle):
-        # Create a walking animation that lifts the clogs upward using cos
-        # Different legs have different phase offsets for realistic walking
-        legs = [
-            (
-                self.thigh_1,
-                self.knee_1,
-                self.calf_1,
-                self.clog_1,
-                self.clog_1_original_y,
-                angle * self.facing_direction,
-            ),
-            (
-                self.thigh_2,
-                self.knee_2,
-                self.calf_2,
-                self.clog_2,
-                self.clog_2_original_y,
-                (angle + math.pi) * self.facing_direction,
-            ),
-            (
-                self.thigh_3,
-                self.knee_3,
-                self.calf_3,
-                self.clog_3,
-                self.clog_3_original_y,
-                (angle + math.pi) * self.facing_direction,
-            ),
-            (
-                self.thigh_4,
-                self.knee_4,
-                self.calf_4,
-                self.clog_4,
-                self.clog_4_original_y,
-                angle * self.facing_direction,
-            ),
+        # Create a walking animation using procedural movement.
+
+        leg_angles = [
+            angle * self.facing_direction,
+            (angle + self._pi) * self.facing_direction,
+            (angle + self._pi) * self.facing_direction,
+            angle * self.facing_direction,
         ]
 
-        for thigh, knee, calf, clog, original_y, leg_angle in legs:
+        for i, leg_angle in enumerate(leg_angles):
+            # Access to cached leg components
+            leg_comp = self._leg_components[i]
+            thigh = leg_comp["thigh"]
+            knee = leg_comp["knee"]
+            calf = leg_comp["calf"]
+            clog = leg_comp["clog"]
+
+            # Access to cached points
+            original_y = leg_comp["original_y"]
+            calf_point_90 = leg_comp["calf_point_90"]
+            thigh_point_270 = leg_comp["thigh_point_270"]
+
             # Calculate new clog position
             lift_height = 1 / 3 * calf.ry
             lift_factor = math.cos(leg_angle)
@@ -506,9 +556,9 @@ class Cow(Shape):
             if abs(dy) > 0.1:
                 clog.translate(0, dy)
 
-                # Move calf too
-                calf_dx = clog.outerPoints["top_middle"].x - calf.outerPoints.get(90).x
-                calf_dy = clog.outerPoints["top_middle"].y - calf.outerPoints.get(90).y
+                # Use cached point reference
+                calf_dx = clog.outerPoints["top_middle"].x - calf_point_90.x
+                calf_dy = clog.outerPoints["top_middle"].y - calf_point_90.y
                 calf.translate(calf_dx, calf_dy)
 
             # Circle 1 based by clog top position
@@ -521,9 +571,8 @@ class Cow(Shape):
             C1 = clog_x**2 + clog_y**2 - rad1**2
 
             # Circle 2 based by hip position and thigh ry + knee radius
-            hip_point = thigh.outerPoints.get(270)
-            hip_x = hip_point.x
-            hip_y = hip_point.y
+            hip_x = thigh_point_270.x
+            hip_y = thigh_point_270.y
 
             rad2 = thigh.ry * 2 + knee.radius
 
@@ -565,21 +614,19 @@ class Cow(Shape):
             clog.rotate(clog_angle)
 
             calf_angle = math.atan2(
-                knee.center.y - calf.outerPoints[90].y,
-                knee.center.x - calf.outerPoints[90].x,
+                knee.center.y - calf_point_90.y,
+                knee.center.x - calf_point_90.x,
             )
             if self.facing_direction == 1:  # Facing right
-                calf.rotate(calf_angle + math.pi / 2, calf.outerPoints[90])
+                calf.rotate(calf_angle + self._half_pi, calf_point_90)
             else:  # Facing left
-                calf.rotate(calf_angle - math.pi / 2 + math.pi, calf.outerPoints[90])
+                calf.rotate(calf_angle - self._half_pi + self._pi, calf_point_90)
 
             thigh_angle = math.atan2(
-                knee.center.y - thigh.outerPoints[270].y,
-                knee.center.x - thigh.outerPoints[270].x,
+                knee.center.y - thigh_point_270.y,
+                knee.center.x - thigh_point_270.x,
             )
             if self.facing_direction == 1:  # Facing right
-                thigh.rotate(thigh_angle - math.pi / 2, thigh.outerPoints[270])
+                thigh.rotate(thigh_angle - self._half_pi, thigh_point_270)
             else:  # Facing left
-                thigh.rotate(
-                    thigh_angle + math.pi / 2 + math.pi, thigh.outerPoints[270]
-                )
+                thigh.rotate(thigh_angle + self._half_pi + self._pi, thigh_point_270)
