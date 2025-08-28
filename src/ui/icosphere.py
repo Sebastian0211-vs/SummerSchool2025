@@ -19,12 +19,18 @@ class AudioIcosphereVisualizer:
     - base_scale: base projection scale (bigger values make the sphere appear larger on-screen).
     """
 
-    def __init__(self, coordinates=(1920, 1080),
-                 sensitivity=2.0, rotation_speed=0.5,
-                 fps=60, subdivisions=2, base_scale=250):
+    def __init__(
+        self,
+        coordinates,
+        sensitivity=2.0,
+        rotation_speed=0.5,
+        fps=60,
+        subdivisions=2,
+        base_scale=250,
+    ):
 
         # Configuration / parameters
-        self.coordinates = coordinates
+        self.coordinates = (base_scale, base_scale)
         self.sensitivity = sensitivity
         self.rotation_speed = rotation_speed
         self.fps = fps
@@ -34,11 +40,13 @@ class AudioIcosphereVisualizer:
         # Mesh and audio-related state (populated in _load_audio_and_mesh)
         self.tris = None  # list of triangle indices (tuples of vertex indices)
         self.verts_unit = None  # list of Point3D unit-length vertices on the sphere
-        self.frames_per_second = None  # audio-derived frames per second for spectrogram frames
+        self.frames_per_second = (
+            None  # audio-derived frames per second for spectrogram frames
+        )
         self.clock = pygame.time.Clock()  # pygame clock for frame timing
         self.rot_angle = 0.0  # cumulative rotation angle (radians)
         self.start_ticks = 0  # pygame time when audio started (milliseconds)
-        
+
         # Optimization caches
         self._cached_displaced_verts = None
         self._cached_rotated_verts = None
@@ -56,7 +64,7 @@ class AudioIcosphereVisualizer:
 
         Input 'v' must have attributes x, y, z.
         """
-        norm = math.sqrt(v.x ** 2 + v.y ** 2 + v.z ** 2)
+        norm = math.sqrt(v.x**2 + v.y**2 + v.z**2)
         if norm == 0:
             return Point3D(0, 0, 0)
         return Point3D(v.x / norm, v.y / norm, v.z / norm)
@@ -71,17 +79,42 @@ class AudioIcosphereVisualizer:
         """
         t = (1.0 + math.sqrt(5.0)) / 2.0
         verts = [
-            Point3D(-1, t, 0), Point3D(1, t, 0), Point3D(-1, -t, 0), Point3D(1, -t, 0),
-            Point3D(0, -1, t), Point3D(0, 1, t), Point3D(0, -1, -t), Point3D(0, 1, -t),
-            Point3D(t, 0, -1), Point3D(t, 0, 1), Point3D(-t, 0, -1), Point3D(-t, 0, 1),
+            Point3D(-1, t, 0),
+            Point3D(1, t, 0),
+            Point3D(-1, -t, 0),
+            Point3D(1, -t, 0),
+            Point3D(0, -1, t),
+            Point3D(0, 1, t),
+            Point3D(0, -1, -t),
+            Point3D(0, 1, -t),
+            Point3D(t, 0, -1),
+            Point3D(t, 0, 1),
+            Point3D(-t, 0, -1),
+            Point3D(-t, 0, 1),
         ]
         # Normalize base vertices so they sit on the unit sphere
         verts = [self._normalize(v) for v in verts]
         faces = [
-            (0, 11, 5), (0, 5, 1), (0, 1, 7), (0, 7, 10), (0, 10, 11),
-            (1, 5, 9), (5, 11, 4), (11, 10, 2), (10, 7, 6), (7, 1, 8),
-            (3, 9, 4), (3, 4, 2), (3, 2, 6), (3, 6, 8), (3, 8, 9),
-            (4, 9, 5), (2, 4, 11), (6, 2, 10), (8, 6, 7), (9, 8, 1),
+            (0, 11, 5),
+            (0, 5, 1),
+            (0, 1, 7),
+            (0, 7, 10),
+            (0, 10, 11),
+            (1, 5, 9),
+            (5, 11, 4),
+            (11, 10, 2),
+            (10, 7, 6),
+            (7, 1, 8),
+            (3, 9, 4),
+            (3, 4, 2),
+            (3, 2, 6),
+            (3, 6, 8),
+            (3, 8, 9),
+            (4, 9, 5),
+            (2, 4, 11),
+            (6, 2, 10),
+            (8, 6, 7),
+            (9, 8, 1),
         ]
         return verts, faces
 
@@ -112,11 +145,9 @@ class AudioIcosphereVisualizer:
             if key in midpoint_cache:
                 return midpoint_cache[key]
             v1, v2 = verts[i1], verts[i2]
-            vm = self._normalize(Point3D(
-                (v1.x + v2.x) / 2.0,
-                (v1.y + v2.y) / 2.0,
-                (v1.z + v2.z) / 2.0
-            ))
+            vm = self._normalize(
+                Point3D((v1.x + v2.x) / 2.0, (v1.y + v2.y) / 2.0, (v1.z + v2.z) / 2.0)
+            )
             verts.append(vm)
             idx = len(verts) - 1
             midpoint_cache[key] = idx
@@ -169,12 +200,12 @@ class AudioIcosphereVisualizer:
     def _load_mesh(self):
         # Build the geometric mesh (verts on unit sphere and triangle faces)
         self.verts_unit, self.tris = self._create_icosphere(self.subdivisions)
-        
+
         # Pre-allocate arrays for optimized processing
         self._num_verts = len(self.verts_unit)
         self._cached_displaced_verts = [None] * self._num_verts
         self._cached_rotated_verts = [None] * self._num_verts
-        
+
         # Initialize arrays with Point3D objects to avoid allocation during animation
         for i in range(self._num_verts):
             self._cached_displaced_verts[i] = Point3D(0, 0, 0)
@@ -190,8 +221,8 @@ class AudioIcosphereVisualizer:
         # Optimize vertex displacement - reuse allocated objects
         for i, v in enumerate(self.verts_unit):
             # TODO Part to make animation. Sound data needs to be extracted
-            #random_factor = random.uniform(0.8, 1.2)
-            #displacement = 1.0 + self.sensitivity * random_factor
+            # random_factor = random.uniform(0.8, 1.2)
+            # displacement = 1.0 + self.sensitivity * random_factor
 
             displacement = 1.0
 
@@ -203,14 +234,14 @@ class AudioIcosphereVisualizer:
 
         # Update rotation angle and cache cos/sin if needed
         self.rot_angle += self.rotation_speed * dt
-        
+
         # Only recalculate cos/sin if rotation changed significantly
         if abs(self.rot_angle - self._last_rot_angle) > 1e-6:
             self._cached_cos_sin = (math.cos(self.rot_angle), math.sin(self.rot_angle))
             self._last_rot_angle = self.rot_angle
-            
+
         cos_a, sin_a = self._cached_cos_sin
-        
+
         # Optimize vertex rotation - reuse allocated objects
         for i, v in enumerate(self._cached_displaced_verts):
             # Apply rotation matrix around Y axis, reusing pre-allocated objects
@@ -222,12 +253,12 @@ class AudioIcosphereVisualizer:
         # Optimized depth sorting - compute and sort in single pass
         tri_depth_pairs = []
         rotated = self._cached_rotated_verts
-        
+
         for i, tri in enumerate(self.tris):
             ia, ib, ic = tri
             z_avg = (rotated[ia].z + rotated[ib].z + rotated[ic].z) / 3.0
             tri_depth_pairs.append((z_avg, i))
-        
+
         # Sort by depth (ascending) - farther triangles drawn first
         tri_depth_pairs.sort(key=lambda x: x[0])
 
