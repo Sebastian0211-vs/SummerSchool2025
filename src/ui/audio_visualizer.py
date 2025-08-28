@@ -3,6 +3,7 @@ import sys
 import math
 from .shape import Point
 from .cow import Cow
+from .edelweiss import Edelweiss
 from .mountains import MountainGenerator
 from .icosphere import AudioIcosphereVisualizer
 from .grass import GrassGenerator
@@ -77,6 +78,12 @@ class AudioVisualizer:
         self.movement_top = self.height * (1 / 3)
         self.movement_bottom = self.height * 0.98
 
+        # Edelweiss
+        self.edelweiss = Edelweiss(
+            Point(500, 500),
+        )
+        self.edelweiss_angle = 0
+
         # Update state
         self.running = True
         self.initialized = True
@@ -126,6 +133,9 @@ class AudioVisualizer:
         # Draw cows
         self.cow1.draw(self.screen)
         self.cow2.draw(self.screen)
+
+        # Draw edelweiss
+        self.edelweiss.draw(self.screen)
 
     def run(self):
         # Main loop
