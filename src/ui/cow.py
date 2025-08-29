@@ -77,7 +77,7 @@ class Cow(Shape):
         dist_body_to_for_neck = for_neck2_b.x - p312.x
         self.for_neck_round = Oval(
             center=Point(p312.x + dist_body_to_for_neck / 2, p312.y),
-            rx=dist_body_to_for_neck / 2,
+            rx=dist_body_to_for_neck * 0.9,
             ry=self.for_neck1.a.y - for_neck2_b.y,
             color=self.color,
         )
@@ -134,7 +134,7 @@ class Cow(Shape):
         self.snout = Oval(
             Point(snout_center.x, snout_center.y),
             NOSE_RADIUS * 2,
-            NOSE_RADIUS,
+            NOSE_RADIUS * 1.4,
             (255, 192, 203),
         )
         self.snout.rotate(-math.pi / 4)
@@ -256,9 +256,9 @@ class Cow(Shape):
         # Leg positions from body outer points (angles in multiples of 6)
         leg_positions = [
             self.body.outerPoints.get(150),
-            self.body.outerPoints.get(30),
+            self.body.outerPoints.get(54),
             self.body.outerPoints.get(120),
-            self.body.outerPoints.get(60),
+            self.body.outerPoints.get(48),
         ]
 
         # Building legs from body outer points
@@ -546,7 +546,7 @@ class Cow(Shape):
             thigh_point_270 = leg_comp["thigh_point_270"]
 
             # Calculate new clog position
-            lift_height = 1 / 3 * calf.ry
+            lift_height = 2 / 3 * calf.ry
             lift_factor = math.cos(leg_angle)
             lift_offset = -lift_height * (lift_factor + 1) / 2
 
