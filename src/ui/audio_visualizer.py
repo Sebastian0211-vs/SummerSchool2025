@@ -1,13 +1,12 @@
 import pygame
 import sys
 import math
-from .shape import Point
+from .shape import Point, Rectangle
 from .cow import Cow
 from .edelweiss import Edelweiss
 from .mountains import MountainGenerator
 from .icosphere import AudioIcosphereVisualizer
 from .grass import GrassGenerator
-from .soil import Soil
 
 
 class AudioVisualizer:
@@ -53,8 +52,14 @@ class AudioVisualizer:
         self.grass = GrassGenerator((self.width, self.height), 2000)
         self.grass.generate()
 
-        self.soil = Soil((self.width, self.height), 40, 0.02)
-        self.soil.generate()
+        self.ground_height = self.height * (2 / 3)
+        ground_center_y = self.height - self.ground_height / 2
+        self.ground = Rectangle(
+            Point(self.width / 2, ground_center_y),
+            self.ground_height,
+            self.width,
+            color=(101, 67, 33),
+        )
 
         # Initialize cows
         self.cow1 = Cow(
@@ -119,7 +124,7 @@ class AudioVisualizer:
         # Apply walking animation
         self.cow1.walk(self.walk_angle)
         self.cow2.walk(self.walk_angle + math.pi)  # Offset walk cycle
-        
+
         # Rotate edelweiss
         self.edelweiss_angle += 0.02
         self.edelweiss.rotate(self.edelweiss_angle)
@@ -128,8 +133,8 @@ class AudioVisualizer:
         # Draw the sky
         self.screen.fill((135, 206, 235))
 
-        # Draw background
-        self.soil.draw(self.screen)
+        self.ground.draw(self.screen)
+
         self.grass.draw(self.screen)
         self.sun.draw(self.screen)
         self.mountains.draw(self.screen)
