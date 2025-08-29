@@ -65,13 +65,13 @@ class AudioVisualizer:
         self.cow1 = Cow(
             Point(self.width * 0.1, self.height * 0.85),
             color=(0, 0, 0),
-            scale_factor=0.8,
+            scale_factor=1,
             facing_direction=1,
         )
         self.cow2 = Cow(
             Point(self.width * 0.9, self.height * 0.9),
             color=(160, 82, 45),
-            scale_factor=0.6,
+            scale_factor=1,
             facing_direction=-1,
         )
 
@@ -81,7 +81,7 @@ class AudioVisualizer:
         self.cow_speed = 10.0
         self.walk_angle = 0
         self.movement_top = self.height * (1 / 3)
-        self.movement_bottom = self.height * 0.98
+        self.movement_bottom = self.height - self.cow1.global_height
 
         # Edelweiss
         self.edelweiss = Edelweiss(

@@ -453,6 +453,14 @@ class Cow(Shape):
         # Pre-cache frequently accessed points for walk animation optimization
         self._cache_walk_points()
 
+        # Store some values that can be usefull
+        self.global_height = abs(
+            self.clog_1.outerPoints["bottom_middle"].y - self.body.outerPoints[270].y
+        )
+        self.global_width = abs(
+            self.snout.outerPoints[0].x - self.body.outerPoints[180].x
+        )
+
     def set_scale_factor(self, new_scale_factor):
         """Update the scale factor and recreate the cow with new dimensions"""
         if self.scale_factor == new_scale_factor:
