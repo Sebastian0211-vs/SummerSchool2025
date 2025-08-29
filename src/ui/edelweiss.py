@@ -1,7 +1,6 @@
 from .shape import *
 from ..utils.geometry import *
 import math
-import random
 
 
 class Edelweiss(Shape):
@@ -9,129 +8,112 @@ class Edelweiss(Shape):
         self,
         center: Point,
         scale_factor=1.0,
-        pistils_color=(255, 255, 0),
-        petals_color=(255, 255, 255),
+        center_color=(255, 220, 100),
+        petal_color=(255, 255, 255),
     ):
-        super().__init__(center)
-        self.center = center
+        super().__init__(center, petal_color)
         self.scale_factor = scale_factor
-        self.pistils_color = pistils_color
-        self.petals_color = petals_color
-
+        self.center_color = center_color
+        self.petal_color = petal_color
         self._create_edelweiss()
 
     def _create_edelweiss(self):
+        # Clean edelweiss design with consistent proportions
+        BASE_SIZE = 20 * self.scale_factor
 
-        # Flower Configuration
-        INNER_RADIUS = 10 * self.scale_factor
-        BIG_PETALS_WIDTH = 10 * self.scale_factor
-        BIG_PETALS_HEIGHT = 30 * self.scale_factor
-        SMALL_PETALS_WIDTH = 10 * self.scale_factor
-        SMALL_PETALS_HEIGHT = 16 * self.scale_factor
+        # Multiple small yellow circles for authentic edelweiss center
+        self.flower_centers = []
 
-        self.inner_circle = Circle(
+        # Central circle
+        main_center = Circle(
             Point(self.center.x, self.center.y),
-            radius=INNER_RADIUS,
-            color=self.petals_color,
+            radius=BASE_SIZE * 0.3,
+            color=self.center_color,
+            num_triangles=12,
         )
+        self.flower_centers.append(main_center)
 
-        self.main_pistil = Circle(
-            Point(self.center.x, self.center.y),
-            radius=INNER_RADIUS / 2,
-            color=self.petals_color,
-        )
-
-        # Create small pistils with random positions in 6 sectors
-        self.pistils = []
-
-        sectors = [
-            (0, 60),  # Sector 1: 0-60 degrees
-            (60, 120),  # Sector 2: 60-120 degrees
-            (120, 180),  # Sector 3: 120-180 degrees
-            (180, 240),  # Sector 4: 180-240 degrees
-            (240, 300),  # Sector 5: 240-300 degrees
-            (300, 360),  # Sector 6: 300-360 degrees
-        ]
-
-        for start_angle, end_angle in sectors:
-            # Generate random angle within this sector
-            random_angle = random.uniform(start_angle, end_angle)
-
-            # Calculate pistil position
-            angle_rad = math.radians(random_angle)
-            petal_x = self.inner_circle.center.x + (INNER_RADIUS / 2) * math.cos(
-                angle_rad
-            )
-            petal_y = self.inner_circle.center.y + (INNER_RADIUS / 2) * math.sin(
-                angle_rad
-            )
-
-            pistil = Circle(
-                Point(petal_x, petal_y),
-                INNER_RADIUS / 4,
-                self.pistils_color,
-            )
-
-            self.pistils.append(pistil)
-
-        # Create big petals with slight random variations
-        self.big_petals = []
-        for angle in [0, 90, 180, 270]:
+        # Yellow pistils
+        center_ring_angles = [i * 60 for i in range(6)]
+        for angle in center_ring_angles:
             angle_rad = math.radians(angle)
-            size_variation = random.uniform(0.8, 1.2)
-            angle_offset = random.uniform(-15, 15)
-            adjusted_angle = angle_rad + math.radians(angle_offset)
+            circle_distance = BASE_SIZE * 0.5
+            circle_x = self.center.x + circle_distance * math.cos(angle_rad)
+            circle_y = self.center.y + circle_distance * math.sin(angle_rad)
 
-            petal_x = self.inner_circle.outerPoints[angle].x + (
-                BIG_PETALS_HEIGHT / 2
-            ) * math.cos(adjusted_angle)
-            petal_y = self.inner_circle.outerPoints[angle].y + (
-                BIG_PETALS_HEIGHT / 2
-            ) * math.sin(adjusted_angle)
-
-            big_petal = Oval(
-                Point(petal_x, petal_y),
-                (BIG_PETALS_WIDTH / 2) * size_variation,
-                (BIG_PETALS_HEIGHT / 2) * size_variation,
-                self.petals_color,
+            small_center = Circle(
+                Point(circle_x, circle_y),
+                radius=BASE_SIZE * 0.2,
+                color=self.center_color,
+                num_triangles=8,
             )
-            big_petal.rotate(adjusted_angle + math.pi / 2)
-            self.big_petals.append(big_petal)
+            self.flower_centers.append(small_center)
 
-        # Create small petals
-        self.small_petals = []
-        for angle in [24, 66, 114, 156, 204, 246, 294, 336]:
-            # Calculate petal position extending outward from circle
+        # Symmetrical white petals arranged in a star pattern
+        self.petals = []
+        petal_angles = [i * 45 for i in range(8)]
+
+        for i, angle in enumerate(petal_angles):
             angle_rad = math.radians(angle)
-            petal_x = self.inner_circle.outerPoints[angle].x + (
-                SMALL_PETALS_HEIGHT / 2
-            ) * math.cos(angle_rad)
-            petal_y = self.inner_circle.outerPoints[angle].y + (
-                SMALL_PETALS_HEIGHT / 2
-            ) * math.sin(angle_rad)
 
-            small_petal = Oval(
+            if i % 2 == 0:  # Long petals (main directions)
+                petal_length = BASE_SIZE * 2.2
+                petal_width = BASE_SIZE * 0.4
+            else:  # Short petals (diagonal directions)
+                petal_length = BASE_SIZE * 1.4
+                petal_width = BASE_SIZE * 0.35
+
+            # Compute coordinates
+            distance_from_center = BASE_SIZE * 0.8 + petal_length / 2
+            petal_x = self.center.x + distance_from_center * math.cos(angle_rad)
+            petal_y = self.center.y + distance_from_center * math.sin(angle_rad)
+
+            petal = Oval(
                 Point(petal_x, petal_y),
-                SMALL_PETALS_WIDTH / 2,
-                SMALL_PETALS_HEIGHT / 2,
-                self.petals_color,
+                petal_width,
+                petal_length,
+                self.petal_color,
+                num_triangles=12,
             )
-            # Rotate petal to align with radial direction
-            small_petal.rotate(angle_rad + math.pi / 2)
-            self.small_petals.append(small_petal)
 
-        self.parts = [
-            self.inner_circle,
-            self.main_pistil,
-            *self.big_petals,
-            *self.small_petals,
-            *self.pistils,
-        ]
+            # Rotate petal to point outward
+            petal.rotate(angle_rad + math.pi / 2)
+            self.petals.append(petal)
 
-        # Update triangles
+        # Create smaller inner petals between main petals for fullness
+        self.inner_petals = []
+        inner_angles = [22.5 + i * 45 for i in range(8)]  # Offset by 22.5 degrees
+
+        for angle in inner_angles:
+            angle_rad = math.radians(angle)
+            petal_length = BASE_SIZE * 0.9
+            petal_width = BASE_SIZE * 0.25
+
+            distance_from_center = BASE_SIZE * 0.9 + petal_length / 2
+            petal_x = self.center.x + distance_from_center * math.cos(angle_rad)
+            petal_y = self.center.y + distance_from_center * math.sin(angle_rad)
+
+            inner_petal = Oval(
+                Point(petal_x, petal_y),
+                petal_width,
+                petal_length,
+                self.petal_color,
+                num_triangles=8,
+            )
+
+            inner_petal.rotate(angle_rad + math.pi / 2)
+            self.inner_petals.append(inner_petal)
+
+        # Update shape attributs
+        self.parts = [*self.petals, *self.inner_petals, *self.flower_centers]
+
         self.triangles = []
         for part in self.parts:
             self.triangles.extend(part.triangles)
+
+        self.original_coords = [
+            ((t.a.x, t.a.y), (t.b.x, t.b.y), (t.c.x, t.c.y)) for t in self.triangles
+        ]
 
     def set_scale_factor(self, new_scale_factor):
         """Update the scale factor and recreate the edelweiss with new dimensions"""
