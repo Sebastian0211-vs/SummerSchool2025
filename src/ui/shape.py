@@ -229,19 +229,19 @@ class Square(Shape):
 
 
 class Circle(Shape):
-    def __init__(self, center: Point, radius: float, color=(255, 255, 255)):
+    def __init__(self, center: Point, radius: float, color=(255, 255, 255), num_triangles=60):
         super().__init__(center, color)
         self.radius = radius
+        self.num_triangles = num_triangles
         self._create_triangles()
 
     def _create_triangles(self):
         """Create triangles based on radius and center"""
         self.triangles = []
-        TOTAL_TRIANGLES = 60
 
-        for i in range(TOTAL_TRIANGLES):
-            p1_angle = 2 * math.pi / TOTAL_TRIANGLES * i
-            p2_angle = 2 * math.pi / TOTAL_TRIANGLES * (i + 1)
+        for i in range(self.num_triangles):
+            p1_angle = 2 * math.pi / self.num_triangles * i
+            p2_angle = 2 * math.pi / self.num_triangles * (i + 1)
 
             # Create outer points
             p1 = Point(
@@ -254,7 +254,7 @@ class Circle(Shape):
             )
 
             # Store in outerPoints map by angle in degrees
-            self.outerPoints[360 / TOTAL_TRIANGLES * i] = p1
+            self.outerPoints[360 / self.num_triangles * i] = p1
 
             self.triangles.append(
                 TrianglePrimitive(
@@ -318,20 +318,20 @@ class Triangle(Shape):
 
 
 class Oval(Shape):
-    def __init__(self, center: Point, rx: float, ry: float, color=(255, 255, 255)):
+    def __init__(self, center: Point, rx: float, ry: float, color=(255, 255, 255), num_triangles=60):
         super().__init__(center, color)
         self.rx, self.ry = rx, ry
+        self.num_triangles = num_triangles
 
         self._create_triangles()
 
     def _create_triangles(self):
         """Create triangles based on rx, ry and center"""
         self.triangles = []
-        TOTAL_TRIANGLES = 60
 
-        for i in range(TOTAL_TRIANGLES):
-            p1_angle = 2 * math.pi / TOTAL_TRIANGLES * i
-            p2_angle = 2 * math.pi / TOTAL_TRIANGLES * (i + 1)
+        for i in range(self.num_triangles):
+            p1_angle = 2 * math.pi / self.num_triangles * i
+            p2_angle = 2 * math.pi / self.num_triangles * (i + 1)
 
             # Create outer points
             p1 = Point(
@@ -343,7 +343,7 @@ class Oval(Shape):
                 self.center.y + self.ry * math.sin(p2_angle),
             )
 
-            self.outerPoints[360 / TOTAL_TRIANGLES * i] = p1
+            self.outerPoints[360 / self.num_triangles * i] = p1
 
             self.triangles.append(
                 TrianglePrimitive(

@@ -1,12 +1,12 @@
 import pygame
 import sys
 import math
-from .shape import Point
+from .shape import Point, Rectangle
 from .cow import Cow
+from .edelweiss import Edelweiss
 from .mountains import MountainGenerator
 from .icosphere import AudioIcosphereVisualizer
 from .grass import GrassGenerator
-from .soil import Soil
 
 
 class AudioVisualizer:
@@ -52,20 +52,26 @@ class AudioVisualizer:
         self.grass = GrassGenerator((self.width, self.height), 2000)
         self.grass.generate()
 
-        self.soil = Soil((self.width, self.height), 40, 0.02)
-        self.soil.generate()
+        self.ground_height = self.height * (2 / 3)
+        ground_center_y = self.height - self.ground_height / 2
+        self.ground = Rectangle(
+            Point(self.width / 2, ground_center_y),
+            self.ground_height,
+            self.width,
+            color=(101, 67, 33),
+        )
 
         # Initialize cows
         self.cow1 = Cow(
             Point(self.width * 0.1, self.height * 0.85),
             color=(0, 0, 0),
-            scale_factor=0.8,
+            scale_factor=1,
             facing_direction=1,
         )
         self.cow2 = Cow(
             Point(self.width * 0.9, self.height * 0.9),
             color=(160, 82, 45),
-            scale_factor=0.6,
+            scale_factor=1,
             facing_direction=-1,
         )
 
@@ -75,7 +81,13 @@ class AudioVisualizer:
         self.cow_speed = 10.0
         self.walk_angle = 0
         self.movement_top = self.height * (1 / 3)
-        self.movement_bottom = self.height * 0.98
+        self.movement_bottom = self.height - self.cow1.global_height
+
+        # Edelweiss
+        self.edelweiss = Edelweiss(
+            Point(500, 500),
+        )
+        self.edelweiss_angle = 0
 
         # Update state
         self.running = True
@@ -113,12 +125,16 @@ class AudioVisualizer:
         self.cow1.walk(self.walk_angle)
         self.cow2.walk(self.walk_angle + math.pi)  # Offset walk cycle
 
+        # Rotate edelweiss
+        self.edelweiss_angle += 0.02
+        self.edelweiss.rotate(self.edelweiss_angle)
+
     def _draw_shapes(self):
         # Draw the sky
         self.screen.fill((135, 206, 235))
 
-        # Draw background
-        self.soil.draw(self.screen)
+        self.ground.draw(self.screen)
+
         self.grass.draw(self.screen)
         self.sun.draw(self.screen)
         self.mountains.draw(self.screen)
@@ -126,6 +142,9 @@ class AudioVisualizer:
         # Draw cows
         self.cow1.draw(self.screen)
         self.cow2.draw(self.screen)
+
+        # Draw edelweiss
+        self.edelweiss.draw(self.screen)
 
     def run(self):
         # Main loop
