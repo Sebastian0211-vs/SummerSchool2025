@@ -37,17 +37,28 @@ class Edelweiss(Shape):
         center_ring_angles = [i * 60 for i in range(6)]
         for angle in center_ring_angles:
             angle_rad = math.radians(angle)
+
+            # Compute points
             circle_distance = BASE_SIZE * 0.5
             circle_x = self.center.x + circle_distance * math.cos(angle_rad)
             circle_y = self.center.y + circle_distance * math.sin(angle_rad)
 
-            small_center = Circle(
-                Point(circle_x, circle_y),
-                radius=BASE_SIZE * 0.2,
-                color=self.center_color,
-                num_triangles=8,
-            )
-            self.flower_centers.append(small_center)
+            for layer in range(2):
+                scale = 1.0 - layer * 0.2
+
+                brightness_factor = 1.0 - layer * 0.16
+                color = tuple(
+                    int(c * brightness_factor) for c in self.center_color
+                )  # Gradiant color
+
+                # All pistils shared the same points bug radius is based on a scaling layer
+                small_center = Circle(
+                    Point(circle_x, circle_y),
+                    radius=BASE_SIZE * 0.2 * scale,
+                    color=color,
+                    num_triangles=8,
+                )
+                self.flower_centers.append(small_center)
 
         # Symmetrical white petals arranged in a star pattern
         self.petals = []
@@ -56,53 +67,69 @@ class Edelweiss(Shape):
         for i, angle in enumerate(petal_angles):
             angle_rad = math.radians(angle)
 
-            if i % 2 == 0:  # Long petals (main directions)
+            if i % 2 == 0:
+                # Big petals 0 90 180 270
                 petal_length = BASE_SIZE * 2.2
                 petal_width = BASE_SIZE * 0.4
-            else:  # Short petals (diagonal directions)
+            else:
+                # Small petals ...
                 petal_length = BASE_SIZE * 1.4
                 petal_width = BASE_SIZE * 0.35
 
-            # Compute coordinates
+            # Compute points
             distance_from_center = BASE_SIZE * 0.8 + petal_length / 2
             petal_x = self.center.x + distance_from_center * math.cos(angle_rad)
             petal_y = self.center.y + distance_from_center * math.sin(angle_rad)
 
-            petal = Oval(
-                Point(petal_x, petal_y),
-                petal_width,
-                petal_length,
-                self.petal_color,
-                num_triangles=12,
-            )
+            for layer in range(3):
+                scale = 1.0 - layer * 0.15
 
-            # Rotate petal to point outward
-            petal.rotate(angle_rad + math.pi / 2)
-            self.petals.append(petal)
+                brightness_factor = 1.0 - layer * 0.12
+                color = tuple(
+                    int(c * brightness_factor) for c in self.petal_color
+                )  # Color gradiant
+
+                layer_petal = Oval(
+                    Point(petal_x, petal_y),
+                    petal_width * scale,
+                    petal_length * scale,
+                    color,
+                    num_triangles=12,
+                )
+                layer_petal.rotate(angle_rad + math.pi / 2)
+                self.petals.append(layer_petal)
 
         # Create smaller inner petals between main petals for fullness
         self.inner_petals = []
-        inner_angles = [22.5 + i * 45 for i in range(8)]  # Offset by 22.5 degrees
+        inner_angles = [22.5 + i * 45 for i in range(8)]
 
         for angle in inner_angles:
             angle_rad = math.radians(angle)
             petal_length = BASE_SIZE * 0.9
             petal_width = BASE_SIZE * 0.25
 
+            # Compute points
             distance_from_center = BASE_SIZE * 0.9 + petal_length / 2
             petal_x = self.center.x + distance_from_center * math.cos(angle_rad)
             petal_y = self.center.y + distance_from_center * math.sin(angle_rad)
 
-            inner_petal = Oval(
-                Point(petal_x, petal_y),
-                petal_width,
-                petal_length,
-                self.petal_color,
-                num_triangles=8,
-            )
+            for layer in range(2):
+                scale = 1.0 - layer * 0.2
 
-            inner_petal.rotate(angle_rad + math.pi / 2)
-            self.inner_petals.append(inner_petal)
+                brightness_factor = 1.0 - layer * 0.16
+                color = tuple(
+                    int(c * brightness_factor) for c in self.petal_color
+                )  # Gradiant color
+
+                inner_petal = Oval(
+                    Point(petal_x, petal_y),
+                    petal_width * scale,
+                    petal_length * scale,
+                    color,
+                    num_triangles=8,
+                )
+                inner_petal.rotate(angle_rad + math.pi / 2)
+                self.inner_petals.append(inner_petal)
 
         # Update shape attributs
         self.parts = [*self.petals, *self.inner_petals, *self.flower_centers]

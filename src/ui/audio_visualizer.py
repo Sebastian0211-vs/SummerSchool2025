@@ -119,6 +119,10 @@ class AudioVisualizer:
         # Apply walking animation
         self.cow1.walk(self.walk_angle)
         self.cow2.walk(self.walk_angle + math.pi)  # Offset walk cycle
+        
+        # Rotate edelweiss
+        self.edelweiss_angle += 0.02
+        self.edelweiss.rotate(self.edelweiss_angle)
 
     def _draw_shapes(self):
         # Draw the sky
