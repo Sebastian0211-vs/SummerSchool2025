@@ -7,9 +7,9 @@ from librosa.feature.rhythm import tempo
 def audio_to_midi_polyphonic(
     audio_signal: np.ndarray,
     srate: int = 44100,
-    hop_length: int = 512,
-    note_min: str = "A2",
-    note_max: str = "B7",
+    hop_length: int = 256, # Was 512
+    note_min: str = "A1",
+    note_max: str = "F7",
     cqt_threshold: float = 0.6,
     min_note_duration: float = 0.15
 ) -> midiutil.MIDIFile:
@@ -191,7 +191,11 @@ def convertMp3ToMidi(filepath: str, plot_results: bool = True) -> midiutil.MIDIF
     """
     audio, sr = librosa.load(filepath, sr=None)
     #audio = librosa.effects.preemphasis(audio)
-    
+    # Instead could use the harmonic and percussive effects:
+    #harmonics = librosa.effects.harmonic(audio, margin=3.0)
+    #percussions = librosa.effects.percussive(audio, margin=3.0)
+    #betterAudio = 0.7*harmonics + 0.3*percussions
+
     # Convert to midi
     midi_file = audio_to_midi_polyphonic(audio, sr)
     
