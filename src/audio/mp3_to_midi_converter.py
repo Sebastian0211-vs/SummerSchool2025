@@ -16,12 +16,11 @@ def audio_to_midi_polyphonic(
     """
     Converts audio to polyphonic midi using librosa.cqt
     """
-    # Calculate note range
+    # Calculates note range
     midi_min = librosa.note_to_midi(note_min)
     midi_max = librosa.note_to_midi(note_max)
     n_notes = midi_max - midi_min + 1
     
-    # Compute CQT for polyphonic detection
     cqt = librosa.cqt(
         y=audio_signal, 
         sr=srate, 
@@ -31,15 +30,15 @@ def audio_to_midi_polyphonic(
         bins_per_octave=12
     )
     
-    # Convert to magnitude and normalize
+    # Converts the notes to magnitude and normalizes
     cqt_mag = np.abs(cqt)
     cqt_norm = cqt_mag / (np.max(cqt_mag, axis=0, keepdims=True) + 1e-8)
     
-    # Convert to piano roll
+    # Converts to a pianoroll
     hop_time = hop_length / srate
     pianoroll = cqt_to_pianoroll(cqt_norm, midi_min, hop_time, cqt_threshold, min_note_duration)
     
-    # Create MIDI file
+    # Creates the midi file
     bpm = float(librosa.feature.rhythm.tempo(y=audio_signal, sr=srate)[0])
     midi_file = create_midi_file(pianoroll, bpm)
     
@@ -49,7 +48,7 @@ def audio_to_midi_polyphonic(
 def cqt_to_pianoroll(cqt_norm: np.ndarray, midi_min: int, hop_time: float, 
                      threshold: float, min_duration: float) -> list:
     """
-    Convert normalized CQT to piano roll format.
+    Converts normalized CQT to a pianoroll
     """
     n_notes, n_frames = cqt_norm.shape
     pianoroll = []
@@ -95,7 +94,6 @@ def create_midi_file(pianoroll: list, bpm: float) -> midiutil.MIDIFile:
     """
     Creates midi file from pianoroll
     """
-
     # Perchance they gonna give as an empty mp3 ??
     if not pianoroll:
         # Return empty MIDI file if no notes detected
@@ -125,6 +123,7 @@ def create_midi_file(pianoroll: list, bpm: float) -> midiutil.MIDIFile:
     return midi
 
 
+# PLOTS ALL AI GENERATED
 def plot_analysis(audio_signal: np.ndarray, pianoroll: list, srate: int = 44100, 
                  hop_length: int = 512, note_min: str = "A2"):
     """
@@ -186,13 +185,12 @@ def plot_analysis(audio_signal: np.ndarray, pianoroll: list, srate: int = 44100,
     plt.show()
 
 
-# Example usage function
-def proceed(filepath: str, plot_results: bool = True) -> midiutil.MIDIFile:
+def convertMp3ToMidi(filepath: str, plot_results: bool = True) -> midiutil.MIDIFile:
     """
     Main
     """
     audio, sr = librosa.load(filepath, sr=None)
-    audio = librosa.effects.preemphasis(audio)
+    #audio = librosa.effects.preemphasis(audio)
     
     # Convert to midi
     midi_file = audio_to_midi_polyphonic(audio, sr)
