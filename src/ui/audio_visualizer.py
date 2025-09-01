@@ -97,22 +97,32 @@ class AudioVisualizer:
             Point(500, 500),
         )
 
-        # Init fixed flower map for all possible notes
-        self.flower_note_map = {}
-        unique_piano_notes = set(note.pitch for note in self.piano_notes)
-        for i, note_pitch in enumerate(unique_piano_notes):
-            # Create flower randomly in the grass
-            grass_top = 950
-            grass_bottom = self.height * (1 / 3) + 50
-            x = random.randint(50, 950)
-            y = random.randint(int(grass_bottom), int(grass_top))
-
-            flower = Edelweiss(Point(x, y), scale_factor=0.25)
-            self.flower_note_map[note_pitch] = flower
+        # Init 12 flowers - one per note section
+        self.flowers = []
+        self.create_flower_grid()
 
         # Update state
         self.running = True
         self.initialized = True
+
+    def create_flower_grid(self):
+        """Create 12 flowers, one for each note (0-11)"""
+        section_width = self.width / 12
+        base_y = self.height - 50
+
+        for i in range(12):
+            x_pos = section_width * i + section_width / 2
+            flower = {
+                "note_index": i,
+                "base_y": base_y,
+                "target_y": base_y,
+                "current_note": None,
+                "edelweiss": Edelweiss(
+                    Point(x_pos, base_y),
+                    scale_factor=0.5,
+                ),
+            }
+            self.flowers.append(flower)
 
     def _update_shapes(self):
         # Update Interface based on notes
@@ -134,20 +144,63 @@ class AudioVisualizer:
                 latest_note = active_piano_notes[-1]
                 self.main_edelweiss.update_by_note(latest_note, 0.2)
 
-                self._update_static_flower_states(active_piano_notes)
+                self._update_flower_grid(active_piano_notes)
 
             # TODO: Trumpet animation
 
-    # Update all mapped flowers based on active notes
-    def _update_static_flower_states(self, active_notes):
-        active_pitches = {note.pitch for note in active_notes}
+    def _update_flower_grid(self, active_notes):
+        """Update 12 flowers based on note amplitudes with spinning and color changes"""
 
-        for note_pitch, flower in self.flower_note_map.items():
-            if note_pitch in active_pitches:
-                note = next(note for note in active_notes if note.pitch == note_pitch)
-                flower.update_by_note(note, 0)
+        # Reset all flowers - clear active notes
+        for flower in self.flowers:
+            flower["current_note"] = None
+            flower["target_y"] = flower["base_y"]
+
+        # Update flowers based on active notes
+        for note in active_notes:
+            note_index = note.pitch % 12
+            flower = self.flowers[note_index]
+            flower["current_note"] = note
+
+            # Calculate amplitude based movement
+            amplitude = note.velocity_on
+            max_height = self.height / 3
+            min_y = self.height - max_height
+
+            # Normalize amplitude (0-127) to movement range
+            y_offset = (amplitude / 127.0) * (flower["base_y"] - min_y)
+            flower["target_y"] = flower["base_y"] - y_offset
+
+        # Update all flowers (position, rotation, color)
+        for flower in self.flowers:
+            edelweiss = flower["edelweiss"]
+
+            # Smooth position interpolation
+            current_y = edelweiss.center.y
+            target_y = flower["target_y"]
+            dy = (target_y - current_y) * 0.1  # Smooth movement
+
+            if abs(dy) > 0.1:
+                edelweiss.translate(0, dy)
+
+            # Handle spinning, color changes, and scaling during note duration
+            if flower["current_note"]:
+
+                amplitude = flower["current_note"].velocity_on
+                base_scale = 0.6
+                min_scale = 0.2
+
+                scale_factor = base_scale - (amplitude / 127.0) * (
+                    base_scale - min_scale
+                )
+                edelweiss.set_scale_factor(scale_factor)
+
+                # Spin the flower and apply color changes
+                edelweiss.update_by_note(flower["current_note"], 0.5)
             else:
-                flower.set_petal_color((255, 255, 255))  # White color if no animation
+                # Reset to base scale and white when no note is active
+                edelweiss.set_scale_factor(0.5)
+                edelweiss.set_petal_color((255, 255, 255))
 
     def _draw_shapes(self):
         # Draw the sky
@@ -159,9 +212,13 @@ class AudioVisualizer:
         self.sun.draw(self.screen)
         self.mountains.draw(self.screen)
 
-        # Draw mapped flowers first
-        for flower in self.flower_note_map.values():
-            flower.draw(self.screen)
+        # Draw cows
+        self.cow1.draw(self.screen)
+        self.cow2.draw(self.screen)
+
+        # Draw grid flowers
+        for flower in self.flowers:
+            flower["edelweiss"].draw(self.screen)
 
         # Draw main edelweiss (foreground)
         self.main_edelweiss.draw(self.screen)
