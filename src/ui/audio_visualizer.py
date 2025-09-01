@@ -93,8 +93,8 @@ class AudioVisualizer:
         )
 
         # Cow animation variables
-        self.cow1_direction = -1
-        self.cow2_direction = 1
+        self.cow1_direction = 1  # Start moving down
+        self.cow2_direction = -1  # Start moving up
         self.cow_speed = 10.0
         self.walk_angle = 0
         self.movement_top = self.height * (1 / 3)
@@ -147,14 +147,14 @@ class AudioVisualizer:
         self.cow2.translate(0, self.cow2_direction * self.cow_speed)
 
         if self.cow1.center.y <= self.movement_top:
-            self.cow1_direction = 1
+            self.cow1_direction = 1  # Move down (positive Y)
         elif self.cow1.center.y >= self.movement_bottom:
-            self.cow1_direction = -1
+            self.cow1_direction = -1  # Move up (negative Y)
 
         if self.cow2.center.y <= self.movement_top:
-            self.cow2_direction = 1
+            self.cow2_direction = 1  # Move down (positive Y)
         elif self.cow2.center.y >= self.movement_bottom:
-            self.cow2_direction = -1
+            self.cow2_direction = -1  # Move up (negative Y)
 
         depth_factor1 = 0.4 + (self.cow1.center.y / self.height) * 0.6
         depth_factor2 = 0.4 + (self.cow2.center.y / self.height) * 0.6
