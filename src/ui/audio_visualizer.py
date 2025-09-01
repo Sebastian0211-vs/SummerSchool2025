@@ -78,7 +78,7 @@ class AudioVisualizer:
             color=(101, 67, 33),
         )
 
-        # Init cows
+        # Initialize cows
         self.cow1 = Cow(
             Point(self.width * 0.1, self.height * 0.85),
             color=(0, 0, 0),
@@ -91,6 +91,14 @@ class AudioVisualizer:
             scale_factor=1,
             facing_direction=-1,
         )
+
+        # Cow animation variables
+        self.cow1_direction = -1
+        self.cow2_direction = 1
+        self.cow_speed = 10.0
+        self.walk_angle = 0
+        self.movement_top = self.height * (1 / 3)
+        self.movement_bottom = self.height - self.cow1.global_height
 
         # Init main Edelweiss
         self.main_edelweiss = Edelweiss(
@@ -125,6 +133,37 @@ class AudioVisualizer:
             self.flowers.append(flower)
 
     def _update_shapes(self):
+        # Update walk angle for animation
+        self.walk_angle += 0.3
+
+        # Move cows vertically
+        self.cow1.center.y += self.cow1_direction * self.cow_speed
+        self.cow2.center.y += self.cow2_direction * self.cow_speed
+
+        # Reverse direction at movement boundaries
+        if self.cow1.center.y <= self.movement_top:
+            self.cow1_direction = 1
+        elif self.cow1.center.y >= self.movement_bottom:
+            self.cow1_direction = -1
+
+        if self.cow2.center.y <= self.movement_top:
+            self.cow2_direction = 1
+        elif self.cow2.center.y >= self.movement_bottom:
+            self.cow2_direction = -1
+
+        # Apply depth effect by adjusting scale based on y position
+        # Higher y values (lower on screen) = larger scale (closer)
+        # Lower y values (higher on screen) = smaller scale (farther)
+        depth_factor1 = 0.4 + (self.cow1.center.y / self.height) * 0.6
+        depth_factor2 = 0.4 + (self.cow2.center.y / self.height) * 0.6
+
+        self.cow1.set_scale_factor(depth_factor1)
+        self.cow2.set_scale_factor(depth_factor2)
+
+        # Apply walking animation
+        self.cow1.walk(self.walk_angle)
+        self.cow2.walk(self.walk_angle + math.pi)  # Offset walk cycle
+        
         # Update Interface based on notes
         if self.piano_notes or self.trumpet_notes:
 
