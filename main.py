@@ -3,12 +3,13 @@ from src.midi.parser import parse_midi
 import os
 from src.ui.audio_visualizer import AudioVisualizer
 from src.audio.AudioSplitter_v1 import AudioSplit
+from src.audio.audiosplitter_v2 import separate_two_harmonic_sources
 
 
 def main():
 
-    visualizer = AudioVisualizer()
-    visualizer.run()
+    #visualizer = AudioVisualizer()
+    #visualizer.run()
 
     res_dir = os.path.dirname(os.path.abspath(__file__))
     res_dir = os.path.join(res_dir, "ressources")
@@ -20,7 +21,13 @@ def main():
     print("Piano output file:", piano_wav_out)
     print("Trumpet output file:", trumpet_wav_out)
 
-    AudioSplit(input_file_mp3, piano_wav_out, trumpet_wav_out)
+    AudioSplit(input_file_mp3,
+               piano_wav_out,
+               trumpet_wav_out,
+               aggressiveness=0.9,      # pousse la séparation
+               debug_dir="debug_run_v5"     # dossier où sauver les spectrogrammes/masks
+)
+    #separate_two_harmonic_sources(input_file_mp3, piano_wav_out, trumpet_wav_out)
 
 
 if __name__ == "__main__":
