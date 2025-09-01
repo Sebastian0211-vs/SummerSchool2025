@@ -1,184 +1,392 @@
-"""
-Module de Séparation Audio
-==========================
-
-Ce module permet de séparer un enregistrement audio contenant
-**un piano** et **une trompette** en deux fichiers distincts.
-
-Il s’agit d’une version simple, pensée pour des cas où l’on sait
-qu’il n’y a que deux instruments. Le principe repose sur deux idées :
-
-1. **Le piano** joue surtout dans les basses et moyennes fréquences.
-2. **La trompette** joue plus haut, avec des harmoniques bien marquées.
-
-Plutôt que d’utiliser de l’intelligence artificielle, on applique
-des filtres et des transformations mathématiques simples pour séparer
-les sons.
-
----
-
-Étapes principales :
-    1. Charger le fichier audio (MP3/WAV).
-    2. Transformer le son en un spectre temps/fréquence (STFT).
-    3. Construire des filtres :
-        - **Passe-bas** → garde les graves (piano).
-        - **Passe-bande** → garde une zone médium-aigu (trompette).
-    4. Utiliser un algorithme (HPSS) qui repère ce qui est **plutôt
-       harmonique** (trompette) et **plutôt percussif/soutenu** (piano).
-    5. Mélanger filtres + HPSS pour obtenir deux « masques ».
-    6. Appliquer les masques, puis revenir dans le domaine du temps
-       (ISTFT) pour recréer des fichiers audio.
-    7. Normaliser le volume et sauvegarder deux fichiers distincts.
-
----
-
-Fonctions :
-    - **stft()** : calcule la transformation temps/fréquence.
-    - **istft()** : revient au signal audio.
-    - **lowpass_mask()** : fabrique un filtre passe-bas.
-    - **bandpass_mask()** : fabrique un filtre passe-bande.
-    - **normalize()** : ajuste le volume pour éviter la saturation.
-    - **AudioSplit()** : la fonction principale qui sépare piano/trompette.
-
----
-
-Exemple :
-    >>> from audio.AudioSplitter_v1 import AudioSplit
-    >>> AudioSplit("chanson.mp3", "piano.wav", "trompette.wav")
-
-Cela crée deux fichiers :
-    - `piano.wav` → contenant uniquement le piano
-    - `trompette.wav` → contenant uniquement la trompette
-
----
-
-Limites :
-    - Les réglages de fréquence sont **fixes** et adaptés à un exemple précis.
-    - Si l’enregistrement contient d’autres instruments, le résultat sera
-      beaucoup moins bon.
-    - Pour améliorer, il faudrait calculer automatiquement les bonnes zones
-      de fréquence selon chaque morceau.
-"""
-
+from __future__ import annotations
+import os
 import numpy as np
 import librosa
 import soundfile as sf
 
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
 
-def stft(signal: np.ndarray, sample_rate: int, n_fft: int = 4096, hop_length: int = 1024):
-    """Transforme le signal audio en spectrogramme (STFT).
 
-    Args:
-        signal: Vecteur audio mono.
-        sample_rate: Fréquence d’échantillonnage.
-        n_fft: Taille de la fenêtre de FFT (défaut : 4096).
-        hop_length: Décalage entre deux fenêtres (défaut : 1024).
+# =========================
+# STFT / ISTFT & utilities
+# =========================
 
-    Returns:
-        Matrice complexe représentant le spectrogramme.
-    """
+def stft(signal: np.ndarray, sample_rate: int, n_fft: int = 2048, hop_length: int = 512):
     return librosa.stft(signal, n_fft=n_fft, hop_length=hop_length, window="hann")
 
 
 def istft(spectrogram, sample_rate: int, n_fft: int, hop_length: int, target_length: int):
-    """Reconstruction d’un signal audio depuis son spectrogramme.
-
-    Args:
-        spectrogram: Matrice complexe issue du STFT.
-        sample_rate: Fréquence d’échantillonnage.
-        n_fft: Taille de la fenêtre de FFT.
-        hop_length: Décalage entre deux fenêtres.
-        target_length: Longueur du signal de sortie.
-
-    Returns:
-        Signal audio reconstruit (vecteur).
-    """
     return librosa.istft(spectrogram, hop_length=hop_length, win_length=n_fft, window="hann", length=target_length)
 
 
-def lowpass_mask(freqs: np.ndarray, cutoff_start: float, cutoff_end: float):
-    """Crée un filtre passe-bas avec transition douce.
-
-    Garde les fréquences basses (piano) et atténue progressivement
-    entre `cutoff_start` et `cutoff_end`.
-    """
-    mask = np.ones_like(freqs)
-    mask[freqs >= cutoff_end] = 0.0
-    band = (freqs >= cutoff_start) & (freqs < cutoff_end)
-    mask[band] = 0.5 * (1 + np.cos(np.pi * (freqs[band] - cutoff_start) / (cutoff_end - cutoff_start)))
-    return mask
-
-
-def bandpass_mask(freqs: np.ndarray, low_cutoff_start: float, low_cutoff_end: float, high_cutoff_start: float, high_cutoff_end: float):
-    """Crée un filtre passe-bande avec transitions douces.
-
-    Garde une zone de fréquences précises (trompette),
-    en atténuant ce qui est trop bas ou trop haut.
-    """
-    hp = np.zeros_like(freqs) # High-pass filter
-    hp[freqs >= low_cutoff_end] = 1.0
-    band_low = (freqs > low_cutoff_start) & (freqs < low_cutoff_end)
-    hp[band_low] = 0.5 * (1 - np.cos(np.pi * (freqs[band_low] - low_cutoff_start) / (low_cutoff_end - low_cutoff_start)))
-
-    lp = lowpass_mask(freqs, high_cutoff_start, high_cutoff_end)  # Low-pass filter
-    return hp * lp
-
-
 def normalize(signal: np.ndarray):
-    """Normalise le volume du signal audio.
-
-    Évite la saturation en ramenant l’amplitude max à ~0.98.
-    """
     max_val = np.max(np.abs(signal)) + 1e-12
     return (0.98 * signal / max_val).astype(np.float32)
 
 
-def AudioSplit(input_file: str, output_piano: str, output_trumpet: str, sr: int = 44100, n_fft: int = 4096, hop_length: int = 1024):
-    """Fonction principale : sépare piano et trompette.
+def lowpass_mask(freqs: np.ndarray, cutoff_start: float, cutoff_end: float):
+    mask = np.ones_like(freqs)
+    mask[freqs >= cutoff_end] = 0.0
+    band = (freqs >= cutoff_start) & (freqs < cutoff_end)
+    mask[band] = 0.5 * (1 + np.cos(np.pi * (freqs[band] - cutoff_start) / (cutoff_end - cutoff_start)))
+    return mask.astype(np.float32)
 
-    Args:
-        input_file: Chemin du fichier audio d’entrée (MP3/WAV).
-        output_piano: Nom du fichier de sortie pour le piano.
-        output_trumpet: Nom du fichier de sortie pour la trompette.
-        sr: Fréquence d’échantillonnage cible (défaut : 44100).
-        n_fft: Taille fenêtre FFT.
-        hop_length: Décalage entre fenêtres.
 
-    Retour:
-        Aucun. Écrit deux fichiers sur le disque.
+def bandpass_mask(freqs: np.ndarray, low_cutoff_start: float, low_cutoff_end: float,
+                  high_cutoff_start: float, high_cutoff_end: float):
+    hp = np.zeros_like(freqs)
+    hp[freqs >= low_cutoff_end] = 1.0
+    band_low = (freqs > low_cutoff_start) & (freqs < low_cutoff_end)
+    hp[band_low] = 0.5 * (1 - np.cos(np.pi * (freqs[band_low] - low_cutoff_start) / (low_cutoff_end - low_cutoff_start)))
+    lp = lowpass_mask(freqs, high_cutoff_start, high_cutoff_end)
+    return (hp * lp).astype(np.float32)
+
+
+# =========================
+# Adaptive cutoffs & HPSS
+# =========================
+
+def _adaptive_cutoffs(mag: np.ndarray, sr: int, freqs: np.ndarray, expand_piano: bool = True):
+    # Mesures globales (simple, robuste)
+    sc  = librosa.feature.spectral_centroid(S=mag, sr=sr)
+    r80 = librosa.feature.spectral_rolloff(S=mag, sr=sr, roll_percent=0.80)
+    r95 = librosa.feature.spectral_rolloff(S=mag, sr=sr, roll_percent=0.95)
+
+    sc  = float(np.nan_to_num(sc,  nan=0.0).mean())
+    r80 = float(np.nan_to_num(r80, nan=0.0).mean())
+    r95 = float(np.nan_to_num(r95, nan=0.0).mean())
+
+    fmax = float(freqs[-1])
+
+    def clamp(x, lo, hi):
+        return float(max(lo, min(hi, x)))
+
+    # Piano élargi vers médiums
+    piano_f1 = clamp(0.45 * sc, 120.0, 800.0)
+    piano_f2 = clamp(0.65 * r80 * 1.8, 800.0, 2500.0)
+    if expand_piano:
+        piano_f2 = min(piano_f2 * 2.0, 3000.0)
+    if piano_f2 <= piano_f1 + 150:
+        piano_f2 = piano_f1 + 150.0
+
+    # Trompette plus haut pour éviter la main droite du piano
+    tr_hp1 = clamp(0.9 * sc,  600.0, 1800.0)
+    tr_hp1 = max(tr_hp1, 1800.0)
+    tr_hp2 = clamp(1.2 * sc,  tr_hp1 + 100.0, 2600.0)
+    tr_lp2 = clamp(0.95 * r95, 2600.0, min(6500.0, fmax))
+    tr_lp1 = clamp(0.65 * r95, tr_hp2 + 150.0, tr_lp2 - 80.0)
+
+    return piano_f1, piano_f2, tr_hp1 , tr_hp2 , tr_lp1, tr_lp2
+
+
+def _hpss_soft_indices(mag: np.ndarray):
     """
+    HPSS en 'indice' souple : on évite la moyenne de trop de configs.
+    Deux kernels typiques pour réduire le biais.
+    """
+    H1, P1 = librosa.decompose.hpss(mag, kernel_size=(31, 5), margin=(2.0, 1.0))
+    H2, P2 = librosa.decompose.hpss(mag, kernel_size=(17, 7), margin=(1.5, 1.0))
+    H = 0.5 * (H1 + H2)
+    P = 0.5 * (P1 + P2)
+    return H.astype(np.float32), P.astype(np.float32)
+
+
+# =========================
+# F0 trompette (HP) & peigne
+# =========================
+
+def _highpass_audio(audio: np.ndarray, sr: int, hp_hz: float = 1200.0):
+    try:
+        from scipy.signal import butter, filtfilt
+        wn = hp_hz / (sr / 2.0)
+        b, a = butter(4, wn, btype='highpass')
+        return filtfilt(b, a, audio).astype(np.float32)
+    except Exception:
+        # Degradé doux si SciPy absent
+        return librosa.effects.preemphasis(audio, coef=0.97).astype(np.float32)
+
+
+def estimate_f0_trumpet(audio: np.ndarray, sr: int, hop_length: int,
+                        fmin: float = 220.0, fmax: float = 1100.0):
+    # Estime F0 sur audio high-passé pour réduire l'influence du piano
+    audio_hp = _highpass_audio(audio, sr, hp_hz=1200.0)
+    f0, _, _ = librosa.pyin(audio_hp, fmin=fmin, fmax=fmax,
+                            frame_length=2048, hop_length=hop_length)
+    return f0  # (T,)
+
+
+def comb_mask_for_frame(freqs: np.ndarray, f0: float,
+                        num_harmonics: int = 16, bw_cents: float = 110.0):
+    if not np.isfinite(f0) or f0 <= 0:
+        return np.zeros_like(freqs, dtype=np.float32)
+
+    def cents(x):
+        return 1200.0 * np.log2(np.maximum(x, 1e-12) / f0)
+
+    c = cents(freqs)
+    mask = np.zeros_like(freqs, dtype=np.float32)
+    std = max(bw_cents / 2.355, 1e-3)  # FWHM ≈ bw_cents
+
+    for k in range(1, num_harmonics + 1):
+        # décroissance 1/sqrt(k) : évite de sur-pondérer les aigus
+        weight = 1.0 / np.sqrt(k)
+        ck = 1200.0 * np.log2(np.maximum(k * f0, 1e-12) / f0)
+        mask += weight * np.exp(-0.5 * ((c - ck) / std) ** 2)
+
+    if mask.max() > 0:
+        mask = mask / (mask.max() + 1e-9)
+    return mask.astype(np.float32)
+
+
+# =========================
+# Agressivité (adoucie)
+# =========================
+
+def map_aggressiveness(aggressiveness: float):
+    a = np.clip(float(aggressiveness), 0.0, 1.0)
+    # Seuils plus doux qu'avant (on évite les "trous")
+    ratio_thresh = 1.5 + 3.0 * a   # borne haute ~4.5
+    min_db = -50.0 + 15.0 * a      # entre -50 et -35 dB
+    comb_bw_cents = 140.0 - 60.0 * a  # 140 -> 80 cents
+    return ratio_thresh, min_db, comb_bw_cents
+
+
+# =========================
+# Debug plotting helpers
+# =========================
+
+def _ensure_dir(d: str):
+    if d and not os.path.exists(d):
+        os.makedirs(d, exist_ok=True)
+
+
+def _time_freq_extent(n_frames: int, sr: int, hop_length: int, freqs: np.ndarray):
+    t_max = (n_frames * hop_length) / float(sr)
+    return [0.0, t_max, float(freqs[0]), float(freqs[-1])]
+
+
+def _time_axis(n_frames: int, sr: int, hop_length: int):
+    return np.arange(n_frames) * (hop_length / float(sr))
+
+
+def save_spectrogram_png(path: str, mag: np.ndarray, sr: int, hop_length: int,
+                         freqs: np.ndarray, title: str = ""):
+    mag_db = librosa.amplitude_to_db(np.maximum(mag, 1e-12), ref=np.max)
+    extent = _time_freq_extent(mag.shape[1], sr, hop_length, freqs)
+    plt.figure(figsize=(10, 4))
+    plt.imshow(mag_db, origin='lower', aspect='auto', extent=extent)
+    plt.xlabel('Temps (s)')
+    plt.ylabel('Fréquence (Hz)')
+    if title:
+        plt.title(title)
+    plt.colorbar(label='Amplitude (dB, ref max)')
+    plt.tight_layout()
+    plt.savefig(path, dpi=140)
+    plt.close()
+
+
+def save_mask_png(path: str, mask: np.ndarray, sr: int, hop_length: int,
+                  freqs: np.ndarray, title: str = ""):
+    extent = _time_freq_extent(mask.shape[1], sr, hop_length, freqs)
+    plt.figure(figsize=(10, 4))
+    plt.imshow(mask, origin='lower', aspect='auto', extent=extent)
+    plt.xlabel('Temps (s)')
+    plt.ylabel('Fréquence (Hz)')
+    if title:
+        plt.title(title)
+    plt.colorbar(label='Poids (0..1)')
+    plt.tight_layout()
+    plt.savefig(path, dpi=140)
+    plt.close()
+
+
+def save_overlay_with_f0(path: str, mag: np.ndarray, mask: np.ndarray, f0: np.ndarray,
+                         sr: int, hop_length: int, freqs: np.ndarray, title: str = ""):
+    mag_db = librosa.amplitude_to_db(np.maximum(mag, 1e-12), ref=np.max)
+    extent = _time_freq_extent(mag.shape[1], sr, hop_length, freqs)
+    t = _time_axis(mag.shape[1], sr, hop_length)
+    plt.figure(figsize=(10, 4))
+    plt.imshow(mag_db, origin='lower', aspect='auto', extent=extent)
+    plt.imshow(mask, origin='lower', aspect='auto', extent=extent, alpha=0.25)
+    valid = np.isfinite(f0)
+    for k in [1, 2, 3, 4, 5, 6]:
+        f = np.copy(f0)
+        f[~valid] = np.nan
+        plt.plot(t, f * k, linewidth=0.8)
+    plt.xlabel('Temps (s)')
+    plt.ylabel('Fréquence (Hz)')
+    if title:
+        plt.title(title)
+    plt.tight_layout()
+    plt.savefig(path, dpi=160)
+    plt.close()
+
+
+# =========================
+# Main splitter (Wiener + consistency)
+# =========================
+
+def piano_anti_harmonics(comb: np.ndarray, freqs: np.ndarray,
+                         tr_hp1: float, alpha: float = 0.85,
+                         min_floor: float = 0.12) -> np.ndarray:
+    """
+    Fabrique un anti-peigne pour le PIANO à partir du peigne trompette.
+    - On n'éteint pas totalement (min_floor), pour éviter les trous.
+    - On n'applique fort que dans la bande médium/haut (>= tr_hp1-200 Hz).
+    """
+    anti = 1.0 - alpha * np.clip(comb, 0.0, 1.0)          # [0..1]
+    anti = np.maximum(anti, min_floor)
+    # Taper: peu d'effet sous ~tr_hp1-200 Hz, fort au-dessus.
+    edge = max(0.0, tr_hp1 - 200.0)
+    ramp = np.clip((freqs - edge) / max(1.0, (freqs[-1] - edge)), 0.0, 1.0)
+    return (0.35 + 0.65 * ramp)[..., None] * anti  # (F,1)
+
+
+def piano_anti_harmonics(comb: np.ndarray, freqs: np.ndarray,
+                         tr_hp1: float, alpha: float = 0.85,
+                         min_floor: float = 0.12) -> np.ndarray:
+    """
+    Fabrique un anti-peigne pour le PIANO à partir du peigne trompette.
+    - On n'éteint pas totalement (min_floor), pour éviter les trous.
+    - On n'applique fort que dans la bande médium/haut (>= tr_hp1-200 Hz).
+    """
+    anti = 1.0 - alpha * np.clip(comb, 0.0, 1.0)          # [0..1]
+    anti = np.maximum(anti, min_floor)
+    # Taper: peu d'effet sous ~tr_hp1-200 Hz, fort au-dessus.
+    edge = max(0.0, tr_hp1 - 200.0)
+    ramp = np.clip((freqs - edge) / max(1.0, (freqs[-1] - edge)), 0.0, 1.0)
+    return (0.35 + 0.65 * ramp)[..., None] * anti  # (F,1)
+
+
+def AudioSplit(input_file: str, output_piano: str, output_trumpet: str,
+               sr: int = 44100, n_fft: int = 2048, hop_length: int = 512,
+               aggressiveness: float = 0.6, debug_dir: str | None = None,
+               expand_piano: bool = True):
+
+    # 1) Load & STFT
     audio, sr = librosa.load(input_file, mono=True, sr=None)
     S = stft(audio, sr, n_fft, hop_length)
-    mag = np.abs(S)
+    mag = np.abs(S).astype(np.float32)
     phase = np.angle(S)
     freqs = librosa.fft_frequencies(sr=sr, n_fft=n_fft)
 
-    piano_f1, piano_f2 = 560.0, 900.0
-    tr_hp1, tr_hp2 = 900.0, 1050.0
-    tr_lp1, tr_lp2 = 3000.0, 3500.0
+    if debug_dir:
+        _ensure_dir(debug_dir)
+        save_spectrogram_png(os.path.join(debug_dir, "mix_spectrogram.png"),
+                             mag, sr, hop_length, freqs,
+                             title="Mix — Spectrogramme (dB)")
 
-    piano_mask = lowpass_mask(freqs, piano_f1, piano_f2)
-    trumpet_mask = bandpass_mask(freqs, tr_hp1, tr_hp2, tr_lp1, tr_lp2)
+    # 2) Cutoffs / masques fréquentiels
+    piano_f1, piano_f2, tr_hp1, tr_hp2, tr_lp1, tr_lp2 = _adaptive_cutoffs(mag, sr, freqs, expand_piano=expand_piano)
 
-    H, P = librosa.decompose.hpss(mag)
-    piano_bias = (P + 1e-9) / (H + P + 1e-9)
-    trumpet_bias = (H + 1e-9) / (H + P + 1e-9)
+    # 3) Indices HPSS souples
+    H, P = _hpss_soft_indices(mag)
+    sigma = np.maximum(1e-6, np.median(mag) * 0.5)
+    piano_bias   = 1.0 / (1.0 + np.exp(-(P - H) / (sigma + 1e-12)))
+    trumpet_bias = 1.0 - piano_bias
 
-    piano_mask = (piano_mask[:, None]) * piano_bias
-    trumpet_mask = (trumpet_mask[:, None]) * trumpet_bias
+    # 4) F0 trompette (HP) + peigne
+    f0 = estimate_f0_trumpet(audio, sr, hop_length, fmin=220.0, fmax=1100.0)
+    ratio_thresh, min_db, comb_bw_cents = map_aggressiveness(aggressiveness)
+    comb = np.stack([comb_mask_for_frame(freqs, f, num_harmonics=16, bw_cents=comb_bw_cents)
+                     for f in f0], axis=1).astype(np.float32)  # (F,T)
 
-    eps = 1e-8
-    total_mask = piano_mask + trumpet_mask + eps
-    piano_mag = mag * (piano_mask / total_mask)
-    trumpet_mag = mag * (trumpet_mask / total_mask)
+    # 5) Scores mous de base (sans gate sur trompette)
+    piano_lp = lowpass_mask(freqs, piano_f1, piano_f2)[:, None]  # (F,1)
+    trump_bp = bandpass_mask(freqs, tr_hp1, tr_hp2, tr_lp1, tr_lp2)[:, None]
 
-    Sp = piano_mag * np.exp(1j * phase)
-    St = trumpet_mag * np.exp(1j * phase)
+    score_p = piano_lp * piano_bias
+    score_t = trump_bp * trumpet_bias * (0.05 + 0.95 * comb)
 
-    y_piano = istft(Sp, sr, n_fft, hop_length, target_length=len(audio))
-    y_trumpet = istft(St, sr, n_fft, hop_length, target_length=len(audio))
+    # 6) NOUVEAU: Anti-peigne PIANO (réduit fortement les harmoniques de trompette)
+    anti = piano_anti_harmonics(comb, freqs, tr_hp1, alpha=0.85, min_floor=0.12)  # (F,1)
+    score_p *= anti
 
+    # 7) Masques de Wiener + lissage
+    eps = 1e-12
+    score_p = np.maximum(score_p, eps)
+    score_t = np.maximum(score_t, eps)
+    m_p = (score_p**2) / (score_p**2 + score_t**2 + eps)
+    m_t = 1.0 - m_p
+
+    try:
+        from scipy.ndimage import median_filter
+        m_p = median_filter(m_p, size=(9, 3))
+        m_t = median_filter(m_t, size=(9, 3))
+    except Exception:
+        pass
+
+    # 8) Reconstruction + mixture consistency (1 passe)
+    Sp = (mag * m_p) * np.exp(1j * phase)
+    St = (mag * m_t) * np.exp(1j * phase)
+    resid = S - (Sp + St)
+    Sp += 0.5 * resid
+    St += 0.5 * resid
+
+    # 9) Sidechain spectral doux: retire un peu de trompette du piano (pré-ISTFT)
+    #   -> sans créer de trous (clip>=0) et on re-projette ensuite.
+    lam = 0.20  # 0.15–0.30 typiquement
+    Sp_mag = np.abs(Sp)
+    St_mag = np.abs(St)
+    Sp_mag = np.maximum(0.0, Sp_mag - lam * St_mag)         # soustraction douce
+    Sp = Sp_mag * np.exp(1j * np.angle(Sp))
+
+    # Re-projection mixture-consistent (courte)
+    resid2 = S - (Sp + St)
+    Sp += 0.5 * resid2
+    St += 0.5 * resid2
+
+    # 10) ISTFT (passe 1)
+    y_p1 = istft(Sp, sr, n_fft, hop_length, target_length=len(audio))
+    y_t1 = istft(St, sr, n_fft, hop_length, target_length=len(audio))
+
+    # 11) PASSE 2 (raffinement) — on ré-estime F0 sur la trompette extraite
+    f0_ref = estimate_f0_trumpet(y_t1, sr, hop_length, fmin=220.0, fmax=1100.0)
+    comb_ref = np.stack([comb_mask_for_frame(freqs, f, num_harmonics=18, bw_cents=comb_bw_cents)
+                         for f in f0_ref], axis=1).astype(np.float32)
+
+    # Recalcule scores à partir du S original (pas du résiduel) pour stabilité
+    score_p2 = piano_lp * piano_bias
+    score_t2 = trump_bp * trumpet_bias * (0.05 + 0.95 * comb_ref)
+    anti2 = piano_anti_harmonics(comb_ref, freqs, tr_hp1, alpha=0.90, min_floor=0.10)
+    score_p2 *= anti2
+
+    score_p2 = np.maximum(score_p2, eps)
+    score_t2 = np.maximum(score_t2, eps)
+    m_p2 = (score_p2**2) / (score_p2**2 + score_t2**2 + eps)
+    m_t2 = 1.0 - m_p2
+
+    try:
+        from scipy.ndimage import median_filter
+        m_p2 = median_filter(m_p2, size=(9, 3))
+        m_t2 = median_filter(m_t2, size=(9, 3))
+    except Exception:
+        pass
+
+    Sp2 = (mag * m_p2) * np.exp(1j * phase)
+    St2 = (mag * m_t2) * np.exp(1j * phase)
+
+    # Sidechain doux encore (plus léger)
+    lam2 = 0.12
+    Sp2_mag = np.maximum(0.0, np.abs(Sp2) - lam2 * np.abs(St2))
+    Sp2 = Sp2_mag * np.exp(1j * np.angle(Sp2))
+
+    # Re-projection finale
+    resid3 = S - (Sp2 + St2)
+    Sp2 += 0.5 * resid3
+    St2 += 0.5 * resid3
+
+    # 12) ISTFT final
+    y_piano = istft(Sp2, sr, n_fft, hop_length, target_length=len(audio))
+    y_trumpet = istft(St2, sr, n_fft, hop_length, target_length=len(audio))
+
+    # 13) Export
     sf.write(output_piano, normalize(y_piano), sr)
     sf.write(output_trumpet, normalize(y_trumpet), sr)
 
+    print(f"[Separation] aggr={aggressiveness:.2f} min_db={min_db:.1f}dB comb_bw={comb_bw_cents:.0f}c")
+    print(f"[Cutoffs] Piano {piano_f1:.1f}-{piano_f2:.1f} Hz  |  Trp {tr_hp1:.1f}-{tr_hp2:.1f} / {tr_lp1:.1f}-{tr_lp2:.1f} Hz")
     print("Fichiers sauvegardés :", output_piano, output_trumpet)
+
