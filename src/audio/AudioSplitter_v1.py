@@ -72,11 +72,11 @@ def _adaptive_cutoffs(mag: np.ndarray, sr: int, freqs: np.ndarray, expand_piano:
         piano_f2 = piano_f1 + 150.0
 
     # Trompette plus haut pour éviter la main droite du piano
-    tr_hp1 = clamp(0.9 * sc,  600.0, 1800.0)
-    tr_hp1 = max(tr_hp1, 1800.0)
-    tr_hp2 = clamp(1.2 * sc,  tr_hp1 + 100.0, 2600.0)
-    tr_lp2 = clamp(0.95 * r95, 2600.0, min(6500.0, fmax))
-    tr_lp1 = clamp(0.65 * r95, tr_hp2 + 150.0, tr_lp2 - 80.0)
+
+    tr_hp1 = clamp(0.9 * sc, 600.0, 1400.0)  # was forced >= 2000
+    tr_hp2 = clamp(1.25 * sc, tr_hp1 + 150.0, 2200.0)
+    tr_lp2 = clamp(0.90 * r95, 2600.0, min(6500.0, fmax))
+    tr_lp1 = clamp(0.65 * r95, tr_hp2 + 120.0, tr_lp2 - 80.0)
 
     return piano_f1, piano_f2, tr_hp1 , tr_hp2 , tr_lp1, tr_lp2
 
@@ -97,24 +97,47 @@ def _hpss_soft_indices(mag: np.ndarray):
 # F0 trompette (HP) & peigne
 # =========================
 
-def _highpass_audio(audio: np.ndarray, sr: int, hp_hz: float = 1200.0):
+def _preprocess_for_f0(audio: np.ndarray, sr: int, low: float = 180.0, high: float = 2000.0):
+    """Band-pass to keep trumpet fundamentals & lower harmonics, suppress lows/high hiss."""
     try:
         from scipy.signal import butter, filtfilt
-        wn = hp_hz / (sr / 2.0)
-        b, a = butter(4, wn, btype='highpass')
-        return filtfilt(b, a, audio).astype(np.float32)
+        ny = sr / 2.0
+        lo = max(10.0, low) / ny
+        hi = min(high, ny * 0.98) / ny
+        b, a = butter(4, [lo, hi], btype='bandpass')
+        y = filtfilt(b, a, audio)
     except Exception:
-        # Degradé doux si SciPy absent
-        return librosa.effects.preemphasis(audio, coef=0.97).astype(np.float32)
+        # Fallback: light preemphasis if SciPy is missing
+        y = librosa.effects.preemphasis(audio, coef=0.97)
+    return y.astype(np.float32)
 
 
 def estimate_f0_trumpet(audio: np.ndarray, sr: int, hop_length: int,
                         fmin: float = 220.0, fmax: float = 1100.0):
-    # Estime F0 sur audio high-passé pour réduire l'influence du piano
-    audio_hp = _highpass_audio(audio, sr, hp_hz=1200.0)
-    f0, _, _ = librosa.pyin(audio_hp, fmin=fmin, fmax=fmax,
-                            frame_length=2048, hop_length=hop_length)
-    return f0  # (T,)
+    # Keep fundamentals (band-pass), then estimate F0
+    y = _preprocess_for_f0(audio, sr, low=180.0, high=2000.0)
+    f0, vflag, vprob = librosa.pyin(
+        y, fmin=fmin, fmax=fmax, frame_length=4096, hop_length=hop_length, center=True
+    )
+    f0 = np.asarray(f0)
+
+    # Interpolate NaNs to stabilize the comb
+    idx = np.isfinite(f0)
+    if np.sum(idx) >= 2:
+        f0_interp = np.interp(np.arange(len(f0)), np.flatnonzero(idx), f0[idx])
+    else:
+        # fallback to a sane constant if tracking totally fails
+        f0_interp = np.full_like(f0, 440.0)
+    # Median smooth to kill tiny jitters
+    try:
+        from scipy.ndimage import median_filter
+        f0_s = median_filter(f0_interp, size=5)
+    except Exception:
+        f0_s = f0_interp
+
+    # Return F0 and voiced probability (used to gate comb strength)
+    return f0_s.astype(np.float32), (vprob.astype(np.float32) if vprob is not None else None)
+
 
 
 def comb_mask_for_frame(freqs: np.ndarray, f0: float,
@@ -149,7 +172,7 @@ def map_aggressiveness(aggressiveness: float):
     # Seuils plus doux qu'avant (on évite les "trous")
     ratio_thresh = 1.5 + 3.0 * a   # borne haute ~4.5
     min_db = -50.0 + 15.0 * a      # entre -50 et -35 dB
-    comb_bw_cents = 140.0 - 60.0 * a  # 140 -> 80 cents
+    comb_bw_cents = 120.0 - 80.0 * a  # 140 -> 80 cents
     return ratio_thresh, min_db, comb_bw_cents
 
 
@@ -288,33 +311,35 @@ def AudioSplit(input_file: str, output_piano: str, output_trumpet: str,
     trumpet_bias = 1.0 - piano_bias
 
     # 4) F0 trompette (HP) + peigne
-    f0 = estimate_f0_trumpet(audio, sr, hop_length, fmin=220.0, fmax=1100.0)
+    f0, vprob = estimate_f0_trumpet(audio, sr, hop_length, fmin=220.0, fmax=1100.0)
     ratio_thresh, min_db, comb_bw_cents = map_aggressiveness(aggressiveness)
-    comb = np.stack([comb_mask_for_frame(freqs, f, num_harmonics=16, bw_cents=comb_bw_cents)
+    comb = np.stack([comb_mask_for_frame(freqs, f, num_harmonics=18, bw_cents=comb_bw_cents)
                      for f in f0], axis=1).astype(np.float32)  # (F,T)
+    v_gate = (0.3 + 0.7 * np.clip(vprob, 0.0, 1.0))[None, :] if vprob is not None else 1.0
 
     # 5) Scores mous de base (sans gate sur trompette)
     piano_lp = lowpass_mask(freqs, piano_f1, piano_f2)[:, None]  # (F,1)
     trump_bp = bandpass_mask(freqs, tr_hp1, tr_hp2, tr_lp1, tr_lp2)[:, None]
 
     score_p = piano_lp * piano_bias
-    score_t = trump_bp * trumpet_bias * (0.05 + 0.95 * comb)
+    score_t = trump_bp * trumpet_bias * (0.10 + 1.10 * comb) * v_gate
 
     # 6) NOUVEAU: Anti-peigne PIANO (réduit fortement les harmoniques de trompette)
-    anti = piano_anti_harmonics(comb, freqs, tr_hp1, alpha=0.85, min_floor=0.12)  # (F,1)
+    anti = piano_anti_harmonics(comb, freqs, tr_hp1, alpha=0.92, min_floor=0.08)  # (F,1)
     score_p *= anti
 
     # 7) Masques de Wiener + lissage
     eps = 1e-12
+    gamma = 3.0
     score_p = np.maximum(score_p, eps)
     score_t = np.maximum(score_t, eps)
-    m_p = (score_p**2) / (score_p**2 + score_t**2 + eps)
+    m_p = (score_p**gamma) / (score_p**gamma + score_t**gamma + eps)
     m_t = 1.0 - m_p
 
     try:
         from scipy.ndimage import median_filter
-        m_p = median_filter(m_p, size=(9, 3))
-        m_t = median_filter(m_t, size=(9, 3))
+        m_p = median_filter(m_p, size=(11, 3))
+        m_t = median_filter(m_t, size=(11, 3))
     except Exception:
         pass
 
@@ -327,7 +352,7 @@ def AudioSplit(input_file: str, output_piano: str, output_trumpet: str,
 
     # 9) Sidechain spectral doux: retire un peu de trompette du piano (pré-ISTFT)
     #   -> sans créer de trous (clip>=0) et on re-projette ensuite.
-    lam = 0.20  # 0.15–0.30 typiquement
+    lam = 0.26  # 0.15–0.30 typiquement
     Sp_mag = np.abs(Sp)
     St_mag = np.abs(St)
     Sp_mag = np.maximum(0.0, Sp_mag - lam * St_mag)         # soustraction douce
@@ -343,14 +368,14 @@ def AudioSplit(input_file: str, output_piano: str, output_trumpet: str,
     y_t1 = istft(St, sr, n_fft, hop_length, target_length=len(audio))
 
     # 11) PASSE 2 (raffinement) — on ré-estime F0 sur la trompette extraite
-    f0_ref = estimate_f0_trumpet(y_t1, sr, hop_length, fmin=220.0, fmax=1100.0)
-    comb_ref = np.stack([comb_mask_for_frame(freqs, f, num_harmonics=18, bw_cents=comb_bw_cents)
+    f0_ref, vprob_ref = estimate_f0_trumpet(y_t1, sr, hop_length, fmin=220.0, fmax=1100.0)
+    comb_ref = np.stack([comb_mask_for_frame(freqs, f, num_harmonics=20, bw_cents=comb_bw_cents)
                          for f in f0_ref], axis=1).astype(np.float32)
+    v_gate2 = (0.3 + 0.7 * np.clip(vprob_ref, 0.0, 1.0))[None, :] if vprob_ref is not None else 1.0
 
-    # Recalcule scores à partir du S original (pas du résiduel) pour stabilité
     score_p2 = piano_lp * piano_bias
-    score_t2 = trump_bp * trumpet_bias * (0.05 + 0.95 * comb_ref)
-    anti2 = piano_anti_harmonics(comb_ref, freqs, tr_hp1, alpha=0.90, min_floor=0.10)
+    score_t2 = trump_bp * trumpet_bias * (0.10 + 1.10 * comb_ref) * v_gate2
+    anti2 = piano_anti_harmonics(comb_ref, freqs, tr_hp1, alpha=0.95, min_floor=0.06)
     score_p2 *= anti2
 
     score_p2 = np.maximum(score_p2, eps)
@@ -360,8 +385,8 @@ def AudioSplit(input_file: str, output_piano: str, output_trumpet: str,
 
     try:
         from scipy.ndimage import median_filter
-        m_p2 = median_filter(m_p2, size=(9, 3))
-        m_t2 = median_filter(m_t2, size=(9, 3))
+        m_p2 = median_filter(m_p2, size=(11, 3))
+        m_t2 = median_filter(m_t2, size=(11, 3))
     except Exception:
         pass
 
@@ -369,7 +394,7 @@ def AudioSplit(input_file: str, output_piano: str, output_trumpet: str,
     St2 = (mag * m_t2) * np.exp(1j * phase)
 
     # Sidechain doux encore (plus léger)
-    lam2 = 0.12
+    lam2 = 0.18
     Sp2_mag = np.maximum(0.0, np.abs(Sp2) - lam2 * np.abs(St2))
     Sp2 = Sp2_mag * np.exp(1j * np.angle(Sp2))
 
