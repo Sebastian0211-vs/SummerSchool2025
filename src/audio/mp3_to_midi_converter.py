@@ -7,7 +7,7 @@ from librosa.feature.rhythm import tempo
 def audio_to_midi_polyphonic(
     audio_signal: np.ndarray,
     srate: int = 44100,
-    hop_length: int = 256, # Was 512
+    hop_length: int = 128, # Was 512
     note_min: str = "A1",
     note_max: str = "F7",
     cqt_threshold: float = 0.6,
@@ -48,7 +48,7 @@ def audio_to_midi_polyphonic(
 def cqt_to_pianoroll(cqt_norm: np.ndarray, midi_min: int, hop_time: float, 
                      threshold: float, min_duration: float) -> list:
     """
-    Converts normalized CQT to a pianoroll
+    Converts the cqt to a pianoroll
     """
     n_notes, n_frames = cqt_norm.shape
     pianoroll = []
@@ -61,7 +61,7 @@ def cqt_to_pianoroll(cqt_norm: np.ndarray, midi_min: int, hop_time: float,
         active_in_frame = set()
         for note_idx in range(n_notes):
             if cqt_norm[note_idx, frame] > threshold:
-                midi_note = note_idx + midi_min
+                midi_note = note_idx + midi_min # oui
                 active_in_frame.add(midi_note)
                 
                 # Start new note if not already active
@@ -125,7 +125,7 @@ def create_midi_file(pianoroll: list, bpm: float) -> midiutil.MIDIFile:
 
 # PLOTS ALL AI GENERATED
 def plot_analysis(audio_signal: np.ndarray, pianoroll: list, srate: int = 44100, 
-                 hop_length: int = 512, note_min: str = "A2"):
+                 hop_length: int = 256, note_min: str = "A1"):
     """
     Plot the analysis results: CQT spectrogram and detected notes.
     """

@@ -1,0 +1,17 @@
+DETAILED MIDI COMPARISON ANALYSIS
+==================================================
+
+FILES COMPARED:
+Reference: src/audio/res/samples/midi files to compare/SuperMarioTrumpet.mid
+Test: src/audio/res/midiOutputs/SuperMarioTrumpet.mid
+
+NOTE DETECTION ANALYSIS:
+Reference notes: 31
+Test notes: 118
+Matched notes: 0
+Precision: 0.0000
+Recall: 0.0000
+F1-Score: 0.0000
+
+TIMING ANALYSIS:
+PITCH ANALYSIS:
