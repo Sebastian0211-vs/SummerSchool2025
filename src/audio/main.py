@@ -4,13 +4,23 @@ from claudeAiComparisonAlgo import compare_midi_files
 
 #filename  =  'src/audio/res/samples/premade/PinkPanther_Piano_Only.mp3'
 #fileout   =  'src/audio/res/midiOutputs/test.mid'
-filename  =  'src/audio/res/samples/sons finax/Gamme_Piano.mp3'
-fileout   =  'src/audio/res/midiOutputs/GammePiano.mid'
+#filename  =  'src/audio/res/samples/sons finax/Gamme_Piano.mp3'
+#fileout   =  'src/audio/res/midiOutputs/GammePiano.mid'
 
-chooseYourChallenger = 101
+trumpetFileName = 'src/audio/res/samples/sons finax/Gamme_Trumpet.mp3'
+pianoFileName = 'src/audio/res/samples/sons finax/Gamme_Piano.mp3'
+fileout = 'src/audio/res/midiOutputs/midi.mid'
+
+chooseYourChallenger = 666
 showGraphs = False
 
 match chooseYourChallenger:
+
+    case 666:
+        midi = convertMp3ToMidi(trumpetFileName, pianoFileName)
+        with open(fileout, 'wb') as f:
+            midi.writeFile(f)
+        '''
     # Produce midi files
     case 1:
         midi = convertMp3ToMidi(filename, showGraphs)
@@ -95,4 +105,7 @@ match chooseYourChallenger:
         resultGamme = compare_midi_files('src/audio/res/samples/midi files to compare/Gamme.mid', 'src/audio/res/midiOutputs/Gamme.mid')
         resultsSSB = compare_midi_files('src/audio/res/samples/midi files to compare/SSB.mid', 'src/audio/res/midiOutputs/SSB.mid')
         resultsSuperMario = compare_midi_files('src/audio/res/samples/midi files to compare/SuperMario.mid', 'src/audio/res/midiOutputs/SuperMario.mid')
+                '''
+    
+
 print("FINISHED")

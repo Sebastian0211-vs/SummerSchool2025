@@ -5,8 +5,10 @@ import matplotlib.pyplot as plt
 from librosa.feature.rhythm import tempo
 
 def audio_to_midi_polyphonic(
-    audio_signal: np.ndarray,
-    srate: int = 44100,
+    trumpet_audio_signal: np.ndarray,
+    piano_audio_singal: np.ndarray,
+    trumpet_srate: int = 44100,
+    piano_srate: int = 44100,
     hop_length: int = 128, # Was 512
     note_min: str = "A1",
     note_max: str = "F7",
@@ -21,26 +23,34 @@ def audio_to_midi_polyphonic(
     midi_max = librosa.note_to_midi(note_max)
     n_notes = midi_max - midi_min + 1
     
-    cqt = librosa.cqt(
-        y=audio_signal, 
-        sr=srate, 
-        hop_length=hop_length,
-        fmin=librosa.note_to_hz(note_min),
-        n_bins=n_notes,
-        bins_per_octave=12
-    )
+    def gimmePianoroll(audio_signal, srate) -> list:
+        cqt = librosa.cqt(
+            y=audio_signal, 
+            sr=srate, 
+            hop_length=hop_length,
+            fmin=librosa.note_to_hz(note_min),
+            n_bins=n_notes,
+            bins_per_octave=12
+        )
+        
+        # Converts the notes to magnitude and normalizes
+        cqt_mag = np.abs(cqt)
+        cqt_norm = cqt_mag / (np.max(cqt_mag, axis=0, keepdims=True) + 1e-8)
+        
+        # Converts to a pianoroll
+        hop_time = hop_length / srate
+        pianoroll = cqt_to_pianoroll(cqt_norm, midi_min, hop_time, cqt_threshold, min_note_duration)
+
+        return pianoroll
+        
     
-    # Converts the notes to magnitude and normalizes
-    cqt_mag = np.abs(cqt)
-    cqt_norm = cqt_mag / (np.max(cqt_mag, axis=0, keepdims=True) + 1e-8)
-    
-    # Converts to a pianoroll
-    hop_time = hop_length / srate
-    pianoroll = cqt_to_pianoroll(cqt_norm, midi_min, hop_time, cqt_threshold, min_note_duration)
-    
+    # Makes both pianorolls to put both of them into one midi file
+    trumpetPianoroll = gimmePianoroll(trumpet_audio_signal, trumpet_srate)
+    pianoPianoroll = gimmePianoroll(piano_audio_singal, piano_srate)
+
     # Creates the midi file
-    bpm = float(librosa.feature.rhythm.tempo(y=audio_signal, sr=srate)[0])
-    midi_file = create_midi_file(pianoroll, bpm)
+    bpm = float(librosa.feature.rhythm.tempo(y=trumpet_audio_signal, sr=trumpet_srate)[0])
+    midi_file = create_midi_file(trumpetPianoroll, pianoPianoroll, bpm)
     
     return midi_file
 
@@ -90,36 +100,45 @@ def cqt_to_pianoroll(cqt_norm: np.ndarray, midi_min: int, hop_time: float,
     return pianoroll
 
 
-def create_midi_file(pianoroll: list, bpm: float) -> midiutil.MIDIFile:
+def create_midi_file(trumpetPianoroll: list, pianoPianoroll: list, bpm: float) -> midiutil.MIDIFile:
     """
     Creates midi file from pianoroll
     """
     # Perchance they gonna give as an empty mp3 ??
-    if not pianoroll:
+    if not trumpetPianoroll:
         # Return empty MIDI file if no notes detected
-        midi = midiutil.MIDIFile(1)
+        midi = midiutil.MIDIFile(2)
+        midi.addTempo(0, 0, bpm)
+        return midi
+    if not pianoPianoroll:
+        # Return empty MIDI file if no notes detected
+        midi = midiutil.MIDIFile(2)
         midi.addTempo(0, 0, bpm)
         return midi
     
     # Convert times to MIDI beats
     beat_duration = 60.0 / bpm
     
-    midi = midiutil.MIDIFile(1)
+    midi = midiutil.MIDIFile(2)
     midi.addTempo(0, 0, bpm)
     
-    for onset_time, offset_time, midi_note in pianoroll:
-        onset_beats = onset_time / beat_duration
-        duration_beats = (offset_time - onset_time) / beat_duration
-        
-        midi.addNote(
-            track=0,
-            channel=0,
-            pitch=int(midi_note),
-            time=onset_beats,
-            duration=duration_beats,
-            volume=100
-        )
-    
+    def gimmeMidi(pianoroll, tracknumber):
+        for onset_time, offset_time, midi_note in pianoroll:
+            onset_beats = onset_time / beat_duration
+            duration_beats = (offset_time - onset_time) / beat_duration
+            
+            midi.addNote(
+                track=tracknumber,
+                channel=tracknumber,
+                pitch=int(midi_note),
+                time=onset_beats,
+                duration=duration_beats,
+                volume=100
+            )
+
+    gimmeMidi(trumpetPianoroll, 0)
+    gimmeMidi(pianoPianoroll, 1)
+
     return midi
 
 
@@ -185,19 +204,15 @@ def plot_analysis(audio_signal: np.ndarray, pianoroll: list, srate: int = 44100,
     plt.show()
 
 
-def convertMp3ToMidi(filepath: str, plot_results: bool = True) -> midiutil.MIDIFile:
+def convertMp3ToMidi(trumpetFilepath: str, pianoFilepath: str, plot_results: bool = False) -> midiutil.MIDIFile:
     """
     Main
     """
-    audio, sr = librosa.load(filepath, sr=None)
-    #audio = librosa.effects.preemphasis(audio)
-    # Instead could use the harmonic and percussive effects:
-    #harmonics = librosa.effects.harmonic(audio, margin=3.0)
-    #percussions = librosa.effects.percussive(audio, margin=3.0)
-    #betterAudio = 0.7*harmonics + 0.3*percussions
+    trumpetAudio, trumpetSr = librosa.load(trumpetFilepath, sr=None)
+    pianoAudio, pianoSr = librosa.load(pianoFilepath, sr=None)
 
-    # Convert to midi
-    midi_file = audio_to_midi_polyphonic(audio, sr)
+    # Converts to midi
+    midi_file = audio_to_midi_polyphonic(trumpetAudio, pianoAudio, trumpetSr, pianoSr)
     
     # Plot boolean
     if plot_results:
