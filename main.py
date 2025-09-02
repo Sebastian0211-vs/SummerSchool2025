@@ -32,7 +32,7 @@ def main():
 
     res_dir = os.path.dirname(os.path.abspath(__file__))
     res_dir = os.path.join(res_dir, "ressources")
-    input_file_mp3 = os.path.join(res_dir, "MP3", "Ecossaise_Both.mp3")
+    input_file_mp3 = os.path.join(res_dir, "MP3", "Final/SSB.mp3")
     piano_wav_out = os.path.join(res_dir, "temp", "piano.wav")
     trumpet_wav_out = os.path.join(res_dir, "temp", "trumpet.wav")
 
