@@ -1,0 +1,63 @@
+Index: main.py
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>from src.midi.models import Note\r\nfrom src.midi.parser import parse_midi\r\nimport os\r\nfrom src.ui.audio_visualizer import AudioVisualizer\r\nfrom src.audio.AudioSplitter_v1 import AudioSplit\r\nfrom src.audio.audiosplitter_v2 import separate_two_harmonic_sources\r\n\r\n\r\ndef main():\r\n\r\n    #visualizer = AudioVisualizer()\r\n    #visualizer.run()\r\n\r\n    res_dir = os.path.dirname(os.path.abspath(__file__))\r\n    res_dir = os.path.join(res_dir, \"ressources\")\r\n    input_file_mp3 = os.path.join(res_dir, \"MP3\", \"Ecossaise_Both.mp3\")\r\n    piano_wav_out = os.path.join(res_dir, \"temp\", \"piano.wav\")\r\n    trumpet_wav_out = os.path.join(res_dir, \"temp\", \"trumpet.wav\")\r\n\r\n    print(\"Input file:\", input_file_mp3)\r\n    print(\"Piano output file:\", piano_wav_out)\r\n    print(\"Trumpet output file:\", trumpet_wav_out)\r\n\r\n    AudioSplit(input_file_mp3,\r\n               piano_wav_out,\r\n               trumpet_wav_out,\r\n               aggressiveness=0.9,      # pousse la séparation\r\n               debug_dir=\"debug_run_v5\"     # dossier où sauver les spectrogrammes/masks\r\n)\r\n    #separate_two_harmonic_sources(input_file_mp3, piano_wav_out, trumpet_wav_out)\r\n\r\n\r\nif __name__ == \"__main__\":\r\n    main()\r\n
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/main.py b/main.py
+--- a/main.py	(revision 70d1b85e04fa26b1ff7626c234cfcebcbf552b12)
++++ b/main.py	(date 1756724330520)
+@@ -1,33 +1,31 @@
+-from src.midi.models import Note
+ from src.midi.parser import parse_midi
+ import os
++import pygame
+ from src.ui.audio_visualizer import AudioVisualizer
+-from src.audio.AudioSplitter_v1 import AudioSplit
+-from src.audio.audiosplitter_v2 import separate_two_harmonic_sources
+ 
+ 
+ def main():
+ 
+-    #visualizer = AudioVisualizer()
+-    #visualizer.run()
+-
+-    res_dir = os.path.dirname(os.path.abspath(__file__))
+-    res_dir = os.path.join(res_dir, "ressources")
+-    input_file_mp3 = os.path.join(res_dir, "MP3", "Ecossaise_Both.mp3")
+-    piano_wav_out = os.path.join(res_dir, "temp", "piano.wav")
+-    trumpet_wav_out = os.path.join(res_dir, "temp", "trumpet.wav")
++    # Note extraction
++    midi_notes = {}
++    project_root = os.path.dirname(os.path.abspath(__file__))
++    midi_file_path = os.path.join(
++        project_root, "ressources", "Midi", "Ecossaise_Beethoven.midi"
++    )
+ 
+-    print("Input file:", input_file_mp3)
+-    print("Piano output file:", piano_wav_out)
+-    print("Trumpet output file:", trumpet_wav_out)
++    if os.path.exists(midi_file_path):
++        try:
++            midi_notes = parse_midi(midi_file_path)
++        except Exception as e:
++            midi_notes = {}
++            exit(0)
++    else:
++        print(f"MIDI file not found at: {midi_file_path}")
++        exit(0)
+ 
+-    AudioSplit(input_file_mp3,
+-               piano_wav_out,
+-               trumpet_wav_out,
+-               aggressiveness=0.9,      # pousse la séparation
+-               debug_dir="debug_run_v5"     # dossier où sauver les spectrogrammes/masks
+-)
+-    #separate_two_harmonic_sources(input_file_mp3, piano_wav_out, trumpet_wav_out)
++    # Visualizer load
++    visualizer = AudioVisualizer(midi_notes=midi_notes, midi_file_path=midi_file_path)
++    visualizer.run()
+ 
+ 
+ if __name__ == "__main__":
