@@ -104,7 +104,7 @@ class AudioVisualizer:
         self.main_edelweiss = Edelweiss(
             Point(500, 500),
         )
-        
+
         # Edelweiss movement system
         self.target_cow = 1  # 1 for cow1, 2 for cow2
         self.moving_to_cow = False
@@ -143,8 +143,8 @@ class AudioVisualizer:
 
     def _update_shapes(self):
         # Cow animatiom
-        self.cow1.translate(0,self.cow1_direction * self.cow_speed)
-        self.cow2.translate(0,self.cow2_direction * self.cow_speed)
+        self.cow1.translate(0, self.cow1_direction * self.cow_speed)
+        self.cow2.translate(0, self.cow2_direction * self.cow_speed)
 
         if self.cow1.center.y <= self.movement_top:
             self.cow1_direction = 1
@@ -162,10 +162,10 @@ class AudioVisualizer:
         self.cow1.set_scale_factor(depth_factor1)
         self.cow2.set_scale_factor(depth_factor2)
 
-        self.walk_angle += 0.3
+        self.walk_angle += 0.6
         self.cow1.walk(self.walk_angle)
         self.cow2.walk(self.walk_angle + math.pi)
-        
+
         # Update Interface based on notes
         if self.piano_notes or self.trumpet_notes:
 
@@ -179,32 +179,33 @@ class AudioVisualizer:
             active_piano_notes = [
                 note
                 for note in self.piano_notes
-                if note.start_tick <= self.current_midi_time  <= note.end_tick
+                if note.start_tick <= self.current_midi_time <= note.end_tick
             ]
             if active_piano_notes:
                 self._update_flower_grid(active_piano_notes)
-        
+
         self._update_main_edelweiss_movement()
-        
+
     def _update_main_edelweiss_movement(self):
-        
+
         if not self.trumpet_notes:
             return
-            
+
         if self.current_midi_time is None:
             return
-        
+
         # Check if we need to start moving for the next note
-        if (not self.moving_to_cow and 
-            self.current_trumpet_note_index < len(self.trumpet_notes)):
+        if not self.moving_to_cow and self.current_trumpet_note_index < len(
+            self.trumpet_notes
+        ):
             next_note = self.trumpet_notes[self.current_trumpet_note_index]
-            
+
             target_cow = 2 if self.target_cow == 1 else 1
             if target_cow == 1:
                 target_pos = self.cow1.horns_circle.center
             else:
                 target_pos = self.cow2.horns_circle.center
-            
+
             # Calculate movement duration based on time to next note
             if self.current_trumpet_note_index > 0:
                 prev_note = self.trumpet_notes[self.current_trumpet_note_index - 1]
@@ -213,16 +214,16 @@ class AudioVisualizer:
             else:
                 # First note movement
                 self.movement_duration = max(0.5, next_note.start_tick * 0.8)
-            
+
             movement_start_time = next_note.start_tick - self.movement_duration
-            
+
             # Check if it's time to start moving
             if self.current_midi_time >= movement_start_time:
                 self.moving_to_cow = True
                 self.target_cow = target_cow
                 self.movement_start_time = self.current_midi_time
                 self.target_hit_time = next_note.start_tick
-        
+
         # Handle movement
         if self.moving_to_cow:
 
@@ -231,19 +232,29 @@ class AudioVisualizer:
                 target_pos = self.cow1.horns_circle.center
             else:
                 target_pos = self.cow2.horns_circle.center
-            
+
             # Calculate how far through the movement we should be
-            movement_progress = (self.current_midi_time - self.movement_start_time) / self.movement_duration
+            movement_progress = (
+                self.current_midi_time - self.movement_start_time
+            ) / self.movement_duration
             movement_progress = min(1.0, max(0.0, movement_progress))
-            
+
             # If this is the first frame of movement or new target (cow)
-            if not hasattr(self, 'movement_start_pos'):
-                self.movement_start_pos = Point(self.main_edelweiss.center.x, self.main_edelweiss.center.y)
-            
+            if not hasattr(self, "movement_start_pos"):
+                self.movement_start_pos = Point(
+                    self.main_edelweiss.center.x, self.main_edelweiss.center.y
+                )
+
             # Interpolate position
-            target_x = self.movement_start_pos.x + (target_pos.x - self.movement_start_pos.x) * movement_progress
-            target_y = self.movement_start_pos.y + (target_pos.y - self.movement_start_pos.y) * movement_progress
-            
+            target_x = (
+                self.movement_start_pos.x
+                + (target_pos.x - self.movement_start_pos.x) * movement_progress
+            )
+            target_y = (
+                self.movement_start_pos.y
+                + (target_pos.y - self.movement_start_pos.y) * movement_progress
+            )
+
             # Move to calculated position
             dx = target_x - self.main_edelweiss.center.x
             dy = target_y - self.main_edelweiss.center.y
@@ -252,20 +263,22 @@ class AudioVisualizer:
                 self.main_edelweiss.translate(dx, dy)
                 depth_factor = 0.2 + (self.main_edelweiss.center.y / self.height) * 0.6
                 self.main_edelweiss.set_scale_factor(depth_factor)
-                
+
                 if self.main_edelweiss_active_note:
-                    self.main_edelweiss.update_by_note(self.main_edelweiss_active_note, 0.5)
-            
+                    self.main_edelweiss.update_by_note(
+                        self.main_edelweiss_active_note, 0.5
+                    )
+
             # Check if target time is reached
             if self.current_midi_time >= self.target_hit_time:
-                if (self.current_trumpet_note_index < len(self.trumpet_notes)):
+                if self.current_trumpet_note_index < len(self.trumpet_notes):
                     current_note = self.trumpet_notes[self.current_trumpet_note_index]
                     self.main_edelweiss_active_note = current_note
 
                 self.moving_to_cow = False
                 self.current_trumpet_note_index += 1
-                if hasattr(self, 'movement_start_pos'):
-                    delattr(self, 'movement_start_pos')
+                if hasattr(self, "movement_start_pos"):
+                    delattr(self, "movement_start_pos")
 
     def _update_flower_grid(self, active_notes):
         # Reset all flowers - clear active notes
