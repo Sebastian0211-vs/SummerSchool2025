@@ -28,19 +28,52 @@ def pad_or_trim(a: np.ndarray, length: int) -> np.ndarray:
         return out
     return a[:length]
 
+
+# --- add this helper (before find_lag) ---
+try:
+    # Fast and numerically stable if SciPy is available
+    from scipy.signal import correlate as _correlate
+
+    def _xcorr(a: np.ndarray, b: np.ndarray) -> np.ndarray:
+        # full cross-correlation of a vs b (a shifted onto b)
+        return _correlate(a, b, mode="full", method="fft")
+except Exception:
+    # Pure NumPy fallback (FFT-based) if SciPy isn't installed
+    def _xcorr(a: np.ndarray, b: np.ndarray) -> np.ndarray:
+        a = a.astype(np.float64, copy=False)
+        b = b.astype(np.float64, copy=False)
+        n = a.size
+        m = b.size
+        L = int(2 ** np.ceil(np.log2(n + m - 1)))  # FFT pad to power of 2
+        Fa = np.fft.rfft(a, L)
+        Fb = np.fft.rfft(b, L)
+        c = np.fft.irfft(Fa * np.conj(Fb), L)      # convolution a * reverse(b)
+        return c[: n + m - 1]
+
+
+
 def find_lag(ref: np.ndarray, est: np.ndarray, max_shift: int = 44100) -> int:
     """Find integer-sample lag aligning est to ref (ref ~ shift(est, lag))."""
     n = min(len(ref), len(est))
+    if n <= 1:
+        return 0
     ref = ref[:n]
     est = est[:n]
-    # limit search window
-    m = min(max_shift, n-1)
-    # compute xcorr around 0 lag using FFT via librosa
-    xcorr = librosa.core.cross_correlation(est, ref, mode="full")
-    center = len(xcorr)//2
-    window = xcorr[center-m:center+m+1]
-    lag = np.argmax(window) - m
-    return int(lag)
+
+    # optional pre-whitening for robustness (cheap HP)
+    ref = ref - np.mean(ref)
+    est = est - np.mean(est)
+
+    xcorr = _xcorr(est, ref)  # est versus ref
+    center = len(xcorr) // 2
+    m = int(min(max_shift, n - 1))
+    # window around zero lag
+    start = center - m
+    stop = center + m + 1
+    window = xcorr[start:stop]
+    lag = int(np.argmax(window) - m)
+    return lag
+
 
 def shift_signal(x: np.ndarray, lag: int) -> np.ndarray:
     if lag == 0:

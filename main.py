@@ -43,7 +43,10 @@ def main():
     AudioSplit(input_file_mp3,
                piano_wav_out,
                trumpet_wav_out,
-               aggressiveness=0.9,      # pousse la séparation
+                n_fft=4096,                # taille de la fenêtre FFT
+                hop_length=1024,           # pas de la fenêtre FFT
+               aggressiveness=0.8,      # pousse la séparation
+               expand_piano=False,        # agrandit la plage de fréquences du piano
                debug_dir="debug_run_v5"     # dossier où sauver les spectrogrammes/masks
 )
     #separate_two_harmonic_sources(input_file_mp3, piano_wav_out, trumpet_wav_out)
