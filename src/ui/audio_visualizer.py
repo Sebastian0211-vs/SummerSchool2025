@@ -10,6 +10,7 @@ from .edelweiss import Edelweiss
 from .mountains import MountainGenerator
 from .icosphere import AudioIcosphereVisualizer
 from .grass import GrassGenerator
+from .soil import Soil
 
 
 class AudioVisualizer:
@@ -59,12 +60,15 @@ class AudioVisualizer:
 
         self.sun = AudioIcosphereVisualizer(
             (self.width, self.height),
-            sensitivity=2.0,
+            sensitivity=0.25,
             rotation_speed=0.5,
             fps=60,
             subdivisions=2,
-            base_scale=250,
+            base_scale=350,
         )
+
+        self.soil = Soil((self.width, self.height), 25, 0.02)
+        self.soil.generate()
 
         self.grass = GrassGenerator((self.width, self.height), 2000)
         self.grass.generate()
@@ -93,8 +97,8 @@ class AudioVisualizer:
         )
 
         # Cow animation variables
-        self.cow1_direction = -1
-        self.cow2_direction = 1
+        self.cow1_direction = 1  # Start moving down
+        self.cow2_direction = -1  # Start moving up
         self.cow_speed = 10.0
         self.walk_angle = 0
         self.movement_top = self.height * (1 / 3)
@@ -147,14 +151,14 @@ class AudioVisualizer:
         self.cow2.translate(0, self.cow2_direction * self.cow_speed)
 
         if self.cow1.center.y <= self.movement_top:
-            self.cow1_direction = 1
+            self.cow1_direction = 1  # Move down (positive Y)
         elif self.cow1.center.y >= self.movement_bottom:
-            self.cow1_direction = -1
+            self.cow1_direction = -1  # Move up (negative Y)
 
         if self.cow2.center.y <= self.movement_top:
-            self.cow2_direction = 1
+            self.cow2_direction = 1  # Move down (positive Y)
         elif self.cow2.center.y >= self.movement_bottom:
-            self.cow2_direction = -1
+            self.cow2_direction = -1  # Move up (negative Y)
 
         depth_factor1 = 0.4 + (self.cow1.center.y / self.height) * 0.6
         depth_factor2 = 0.4 + (self.cow2.center.y / self.height) * 0.6
@@ -175,6 +179,15 @@ class AudioVisualizer:
             # Calculate delta time
             self.current_midi_time = time.time() - self.midi_start_time
 
+            # Trumpet animation
+            active_trumpet_notes = [
+                note
+                for note in self.trumpet_notes
+                if note.start_tick <= self.current_midi_time <= note.end_tick
+            ]
+            if active_trumpet_notes:
+                self.sun.update_by_note(active_trumpet_notes)
+
             # Piano animation
             active_piano_notes = [
                 note
@@ -183,6 +196,7 @@ class AudioVisualizer:
             ]
             if active_piano_notes:
                 self._update_flower_grid(active_piano_notes)
+                self.mountains.update_by_note(active_piano_notes)
 
         self._update_main_edelweiss_movement()
 
@@ -337,11 +351,12 @@ class AudioVisualizer:
         self.screen.fill((135, 206, 235))
 
         # Draw background
-        self.ground.draw(self.screen)
-        self.grass.draw(self.screen)
         self.sun.draw(self.screen)
+        self.ground.draw(self.screen)
+        self.soil.draw(self.screen)
+        self.grass.draw(self.screen)
         self.mountains.draw(self.screen)
-
+       
         # Draw cows
         self.cow1.draw(self.screen)
         self.cow2.draw(self.screen)
